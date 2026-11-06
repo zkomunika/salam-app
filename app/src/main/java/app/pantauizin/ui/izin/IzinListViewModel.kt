@@ -1,0 +1,74 @@
+package app.pantauizin.ui.izin
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import app.pantauizin.data.IzinRepository
+import app.pantauizin.data.IzinView
+import app.pantauizin.domain.IzinFilter
+import app.pantauizin.domain.IzinStatus
+import app.pantauizin.domain.StatusResolver
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+
+data class IzinListItemUi(
+    val view: IzinView,
+    val status: IzinStatus,
+    val batasAktif: LocalDate,
+    val hariTerlambat: Int,
+    val sudahKonfirmasi: Boolean
+) {
+    val tampilKotakKonfirmasi: Boolean
+        get() = status == IzinStatus.TERLAMBAT_BELUM_KONFIRMASI ||
+            status == IzinStatus.TERLAMBAT_TERKONFIRMASI ||
+            status == IzinStatus.TERLAMBAT_KONFIRMASI_HABIS ||
+            status == IzinStatus.KEMBALI_TERLAMBAT
+}
+
+class IzinListViewModel(
+    private val izinRepo: IzinRepository,
+    private val todayProvider: () -> LocalDate = { LocalDate.now() }
+) : ViewModel() {
+
+    private val _filter = MutableStateFlow(IzinFilter.SEMUA)
+    val filter: StateFlow<IzinFilter> = _filter.asStateFlow()
+
+    private val _items = MutableStateFlow<List<IzinListItemUi>>(emptyList())
+    val items: StateFlow<List<IzinListItemUi>> = _items.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            combine(izinRepo.observe(), _filter) { list, currentFilter ->
+                val today = todayProvider()
+                list.map { view ->
+                    val snap = view.toSnapshot()
+                    val status = StatusResolver.status(snap, today)
+                    IzinListItemUi(
+                        view = view,
+                        status = status,
+                        batasAktif = StatusResolver.batasAktif(snap),
+                        hariTerlambat = StatusResolver.hariTerlambat(snap, today),
+                        sudahKonfirmasi = view.konfirmasi.isNotEmpty()
+                    )
+                }.filter { currentFilter.matches(it.status) }
+            }.collect { filtered ->
+                _items.value = filtered
+            }
+        }
+    }
+
+    fun pilihFilter(newFilter: IzinFilter) {
+        _filter.value = newFilter
+    }
+
+    suspend fun tandaiKembali(izinId: Long, tanggal: LocalDate) {
+        izinRepo.tandaiKembali(izinId, tanggal)
+    }
+
+    suspend fun batalKembali(izinId: Long) {
+        izinRepo.batalKembali(izinId)
+    }
+}
