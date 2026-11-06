@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
@@ -30,11 +30,17 @@ import app.pantauizin.ui.izin.IzinListScreen
 import app.pantauizin.ui.izin.IzinListViewModel
 import app.pantauizin.ui.konfirmasi.KonfirmasiFormScreen
 import app.pantauizin.ui.konfirmasi.KonfirmasiFormViewModel
+import app.pantauizin.ui.notifikasi.NotifikasiScreen
+import app.pantauizin.ui.notifikasi.NotifikasiViewModel
+import app.pantauizin.ui.pengaturan.DataSantriScreen
+import app.pantauizin.ui.pengaturan.DataSantriViewModel
+import app.pantauizin.ui.pengaturan.PengaturanScreen
+import app.pantauizin.ui.pengaturan.PengaturanViewModel
 import app.pantauizin.ui.terlambat.TerlambatScreen
 import app.pantauizin.ui.terlambat.TerlambatViewModel
 
 enum class MainTab(val route: String, val label: String, val icon: ImageVector) {
-    IZIN("izin", "Izin", Icons.Default.Assignment),
+    IZIN("izin", "Izin", Icons.AutoMirrored.Filled.Assignment),
     TERLAMBAT("terlambat", "Terlambat", Icons.Default.Warning),
     NOTIFIKASI("notifikasi", "Notifikasi", Icons.Default.Notifications),
     PENGATURAN("pengaturan", "Pengaturan", Icons.Default.Settings)
@@ -51,6 +57,7 @@ fun AppNav(
     var showAddIzin by rememberSaveable { mutableStateOf(false) }
     var editIzinId by rememberSaveable { mutableStateOf<Long?>(null) }
     var konfirmasiIzinId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showDataSantri by rememberSaveable { mutableStateOf(false) }
 
     if (container != null && (showAddIzin || editIzinId != null)) {
         val currentEditId = editIzinId
@@ -87,6 +94,17 @@ fun AppNav(
             viewModel = vm,
             onSaved = { konfirmasiIzinId = null },
             onBack = { konfirmasiIzinId = null }
+        )
+        return
+    }
+
+    if (container != null && showDataSantri) {
+        val vm = remember(container) {
+            DataSantriViewModel(santriRepo = container.santriRepository)
+        }
+        DataSantriScreen(
+            viewModel = vm,
+            onBack = { showDataSantri = false }
         )
         return
     }
@@ -141,16 +159,28 @@ fun AppNav(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
-                MainTab.NOTIFIKASI,
-                MainTab.PENGATURAN -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Layar ${currentTab.label}")
+                MainTab.NOTIFIKASI -> {
+                    val vm = remember(container) {
+                        NotifikasiViewModel(notifRepo = container.notifikasiRepository)
                     }
+                    NotifikasiScreen(
+                        viewModel = vm,
+                        onOpenTerlambat = { currentTab = MainTab.TERLAMBAT },
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+                MainTab.PENGATURAN -> {
+                    val vm = remember(container) {
+                        PengaturanViewModel(
+                            settings = container.settingsStore,
+                            onReschedule = { container.sweepRunner.rescheduleOnly() }
+                        )
+                    }
+                    PengaturanScreen(
+                        viewModel = vm,
+                        onOpenDataSantri = { showDataSantri = true },
+                        modifier = Modifier.padding(innerPadding)
+                    )
                 }
             }
         }
