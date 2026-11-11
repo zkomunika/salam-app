@@ -12,6 +12,7 @@ import app.pantauizin.data.SantriEntity
 import app.pantauizin.data.SettingsStore
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -137,6 +138,45 @@ class SweepRunnerTest {
         currentTime = LocalDateTime.of(2026, 11, 5, 15, 0)
         assertFalse(runner.runIfDue())
         assertEquals(1, notifier.shown.size)
+    }
+
+    @Test
+    fun diagnosisMencatatSumberWaktuDanAlarmBerikutnya() = runTest {
+        tambahIzinTerlambat()
+        currentTime = LocalDateTime.of(2026, 11, 5, 8, 0)
+
+        runner.runIfDue(SweepSource.ALARM)
+
+        assertEquals(SweepSource.ALARM, settings.lastRunSource.first())
+        assertEquals(currentTime, settings.lastRunAt.first())
+        assertEquals(currentTime, settings.lastAlarmFiredAt.first())
+        assertEquals(LocalDateTime.of(2026, 11, 6, 8, 0), settings.nextAlarmAt.first())
+    }
+
+    @Test
+    fun sapuanLewatWorkerTidakMenggandakanNotifikasiDanTidakMencatatAlarm() = runTest {
+        tambahIzinTerlambat()
+        currentTime = LocalDateTime.of(2026, 11, 5, 8, 0)
+        assertTrue(runner.runIfDue(SweepSource.ALARM))
+
+        currentTime = LocalDateTime.of(2026, 11, 5, 8, 15)
+        assertFalse(runner.runIfDue(SweepSource.WORKER))
+
+        assertEquals(1, notifier.shown.size)
+        assertEquals(SweepSource.WORKER, settings.lastRunSource.first())
+        assertEquals(LocalDateTime.of(2026, 11, 5, 8, 0), settings.lastAlarmFiredAt.first())
+    }
+
+    @Test
+    fun workerMengejarSapuanBilaAlarmHilang() = runTest {
+        val id = tambahIzinTerlambat()
+        currentTime = LocalDateTime.of(2026, 11, 5, 9, 30)
+
+        assertTrue(runner.runIfDue(SweepSource.WORKER))
+
+        assertEquals(1, notifier.shown.size)
+        assertEquals(id, notifier.shown.first().first)
+        assertEquals(null, settings.lastAlarmFiredAt.first())
     }
 
     @Test

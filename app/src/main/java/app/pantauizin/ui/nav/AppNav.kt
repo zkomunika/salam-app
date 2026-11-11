@@ -173,6 +173,7 @@ fun AppNav(
                     val vm = remember(container) {
                         PengaturanViewModel(
                             settings = container.settingsStore,
+                            onTesNotifikasi = { container.sweepRunner.tesNotifikasi() },
                             onReschedule = { container.sweepRunner.rescheduleOnly() }
                         )
                     }

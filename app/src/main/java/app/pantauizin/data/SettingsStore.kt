@@ -8,10 +8,12 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.pantauizin.domain.DefaultTemplates
 import app.pantauizin.domain.TemplateVariant
+import app.pantauizin.notify.SweepSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.concurrent.ConcurrentHashMap
 
@@ -65,12 +67,46 @@ class SettingsStore(context: Context) {
         }
     }
 
+    val lastRunAt: Flow<LocalDateTime?> = dataStore.data.map { prefs ->
+        prefs[KEY_LAST_RUN_AT]?.let(LocalDateTime::parse)
+    }
+
+    val lastRunSource: Flow<SweepSource?> = dataStore.data.map { prefs ->
+        prefs[KEY_LAST_RUN_SOURCE]?.let { name -> SweepSource.entries.firstOrNull { it.name == name } }
+    }
+
+    val lastAlarmFiredAt: Flow<LocalDateTime?> = dataStore.data.map { prefs ->
+        prefs[KEY_LAST_ALARM_FIRED]?.let(LocalDateTime::parse)
+    }
+
+    val nextAlarmAt: Flow<LocalDateTime?> = dataStore.data.map { prefs ->
+        prefs[KEY_NEXT_ALARM]?.let(LocalDateTime::parse)
+    }
+
+    suspend fun recordRun(at: LocalDateTime, source: SweepSource) {
+        dataStore.edit { prefs ->
+            prefs[KEY_LAST_RUN_AT] = at.toString()
+            prefs[KEY_LAST_RUN_SOURCE] = source.name
+            if (source == SweepSource.ALARM) prefs[KEY_LAST_ALARM_FIRED] = at.toString()
+        }
+    }
+
+    suspend fun setNextAlarmAt(at: LocalDateTime) {
+        dataStore.edit { prefs ->
+            prefs[KEY_NEXT_ALARM] = at.toString()
+        }
+    }
+
     companion object {
         val DEFAULT_JAM: LocalTime = LocalTime.of(8, 0)
         private val KEY_JAM_PENGINGAT = stringPreferencesKey("jam_pengingat")
         private val KEY_TEMPLATE_A = stringPreferencesKey("template_a")
         private val KEY_TEMPLATE_B = stringPreferencesKey("template_b")
         private val KEY_LAST_SWEEP_DATE = stringPreferencesKey("last_sweep_date")
+        private val KEY_LAST_RUN_AT = stringPreferencesKey("last_run_at")
+        private val KEY_LAST_RUN_SOURCE = stringPreferencesKey("last_run_source")
+        private val KEY_LAST_ALARM_FIRED = stringPreferencesKey("last_alarm_fired")
+        private val KEY_NEXT_ALARM = stringPreferencesKey("next_alarm")
 
         private val stores = ConcurrentHashMap<String, DataStore<Preferences>>()
 

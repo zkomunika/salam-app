@@ -112,6 +112,24 @@ class KonfirmasiFormViewModelTest {
     }
 
     @Test
+    fun riwayatKonfirmasiSebelumnyaDimuatKeState() = runTest {
+        val vm1 = KonfirmasiFormViewModel(izinRepo, santriBelumKembaliIzinId) { today }
+        vm1.load()
+        assertTrue(vm1.uiState.value.riwayat.isEmpty())
+        vm1.ubahTanggalBaru(today)
+        vm1.ubahCatatan("Wali sakit")
+        vm1.pilihBukti(Uri.parse("content://x/1"), "foto.jpg")
+        assertTrue(vm1.simpan())
+
+        val vm2 = KonfirmasiFormViewModel(izinRepo, santriBelumKembaliIzinId) { today }
+        vm2.load()
+        val riwayat = vm2.uiState.value.riwayat
+        assertEquals(1, riwayat.size)
+        assertEquals("Wali sakit", riwayat.first().catatan)
+        assertEquals("bukti/salinan.jpg", riwayat.first().buktiPath)
+    }
+
+    @Test
     fun santriSudahKembaliTidakMembutuhkanTanggalBaruDanBuktiCatatanOpsional() = runTest {
         val vm = KonfirmasiFormViewModel(izinRepo, santriSudahKembaliIzinId) { today }
         vm.load()

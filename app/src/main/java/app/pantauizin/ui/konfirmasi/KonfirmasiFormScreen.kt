@@ -110,6 +110,17 @@ fun KonfirmasiFormScreen(
                 }
             }
 
+            if (state.riwayat.isNotEmpty()) {
+                Column {
+                    Text(
+                        text = "Konfirmasi sebelumnya",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    KonfirmasiRiwayatSection(konfirmasi = state.riwayat)
+                }
+            }
+
             if (state.perluTanggalBaru) {
                 Column {
                     Text(

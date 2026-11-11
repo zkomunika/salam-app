@@ -56,6 +56,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.pantauizin.ui.izin.styleOf
+import app.pantauizin.ui.konfirmasi.KonfirmasiRiwayatSection
 import app.pantauizin.ui.theme.StatusColors
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -289,21 +290,14 @@ private fun TerlambatCard(
             )
 
             if (item.view.konfirmasi.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Riwayat konfirmasi:",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "Riwayat konfirmasi wali:",
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
-                item.view.konfirmasi.forEachIndexed { idx, konf ->
-                    val tglStr = konf.tanggalKembaliBaru?.format(ID_DATE_FORMAT) ?: "Tanpa tanggal baru"
-                    val catatanStr = konf.catatan?.let { " — $it" }.orEmpty()
-                    Text(
-                        text = "${idx + 1}. $tglStr$catatanStr",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.height(4.dp))
+                KonfirmasiRiwayatSection(konfirmasi = item.view.konfirmasi)
             }
 
             Spacer(modifier = Modifier.height(12.dp))

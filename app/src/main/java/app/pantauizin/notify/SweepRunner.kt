@@ -24,6 +24,9 @@ interface SweepRunnerProvider {
     val sweepRunner: SweepRunner
 }
 
+/** Asal pemanggilan sapuan; dicatat untuk diagnosis di layar Pengaturan. */
+enum class SweepSource { ALARM, WORKER, APP_OPEN, BOOT }
+
 class SweepRunner(
     private val izin: IzinRepository,
     private val notif: NotifikasiDao,
@@ -32,13 +35,19 @@ class SweepRunner(
     private val scheduler: Scheduler,
     private val clock: () -> LocalDateTime
 ) {
-    suspend fun runIfDue(): Boolean {
+    private suspend fun schedule(at: LocalDateTime) {
+        scheduler.schedule(at)
+        settings.setNextAlarmAt(at)
+    }
+
+    suspend fun runIfDue(source: SweepSource = SweepSource.APP_OPEN): Boolean {
         val now = clock()
+        settings.recordRun(now, source)
         val jam = settings.jamPengingat.first()
         val lastSweep = settings.lastSweepDate.first()
 
         if (!SweepSchedule.isDue(now, jam, lastSweep)) {
-            scheduler.schedule(SweepSchedule.next(now, jam, lastSweep))
+            schedule(SweepSchedule.next(now, jam, lastSweep))
             return false
         }
 
@@ -69,7 +78,7 @@ class SweepRunner(
         }
 
         settings.setLastSweepDate(today)
-        scheduler.schedule(SweepSchedule.next(now, jam, today))
+        schedule(SweepSchedule.next(now, jam, today))
         return true
     }
 
@@ -77,10 +86,17 @@ class SweepRunner(
         val now = clock()
         val jam = settings.jamPengingat.first()
         val lastSweep = settings.lastSweepDate.first()
-        scheduler.schedule(SweepSchedule.next(now, jam, lastSweep))
+        schedule(SweepSchedule.next(now, jam, lastSweep))
+    }
+
+    /** Menampilkan satu notifikasi uji langsung (tidak disimpan ke riwayat). */
+    fun tesNotifikasi() {
+        notifier.show(TEST_NOTIF_ID, "Tes notifikasi SALAM APP berhasil. Pengingat dapat tampil.")
     }
 
     companion object {
+        const val TEST_NOTIF_ID = 999_999L
+
         fun formatNotifText(jenis: NotifJenis, nama: String, kamar: String): String = when (jenis) {
             NotifJenis.LEWAT_BATAS -> "$nama kamar $kamar sudah melewati batas waktu izin"
             NotifJenis.LEWAT_TANGGAL_BARU -> "$nama kamar $kamar sudah melewati tanggal kembali yang dikonfirmasi"
@@ -88,4 +104,3 @@ class SweepRunner(
         }
     }
 }
-

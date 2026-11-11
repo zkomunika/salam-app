@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.IzinFilter
 import app.pantauizin.domain.IzinStatus
+import app.pantauizin.ui.konfirmasi.KonfirmasiRiwayatDialog
 import app.pantauizin.ui.theme.StatusColors
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -77,6 +78,7 @@ fun IzinListScreen(
 
     var dialogTandaiKembaliIzinId by remember { mutableStateOf<Long?>(null) }
     var dialogBatalKembaliIzinId by remember { mutableStateOf<Long?>(null) }
+    var dialogRiwayatIzinId by remember { mutableStateOf<Long?>(null) }
 
     Scaffold(
         modifier = modifier,
@@ -145,6 +147,7 @@ fun IzinListScreen(
                                 }
                             },
                             onOpenKonfirmasi = { onOpenKonfirmasi(item.view.id) },
+                            onLihatKonfirmasi = { dialogRiwayatIzinId = item.view.id },
                             onEdit = { onEditIzin(item.view.id) }
                         )
                     }
@@ -182,6 +185,19 @@ fun IzinListScreen(
         }
     }
 
+    dialogRiwayatIzinId?.let { izinId ->
+        val target = items.firstOrNull { it.view.id == izinId }
+        if (target == null) {
+            dialogRiwayatIzinId = null
+        } else {
+            KonfirmasiRiwayatDialog(
+                namaSantri = target.view.nama,
+                konfirmasi = target.view.konfirmasi,
+                onDismiss = { dialogRiwayatIzinId = null }
+            )
+        }
+    }
+
     dialogBatalKembaliIzinId?.let { izinId ->
         AlertDialog(
             onDismissRequest = { dialogBatalKembaliIzinId = null },
@@ -213,6 +229,7 @@ private fun IzinCard(
     item: IzinListItemUi,
     onToggleKembali: () -> Unit,
     onOpenKonfirmasi: () -> Unit,
+    onLihatKonfirmasi: () -> Unit,
     onEdit: () -> Unit
 ) {
     val style = styleOf(item.status)
@@ -344,6 +361,12 @@ private fun IzinCard(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
+                }
+            }
+
+            if (item.view.konfirmasi.isNotEmpty()) {
+                TextButton(onClick = onLihatKonfirmasi) {
+                    Text("Lihat konfirmasi (${item.view.konfirmasi.size})")
                 }
             }
         }

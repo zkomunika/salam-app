@@ -14,7 +14,8 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                provider.sweepRunner.rescheduleOnly()
+                SweepWorker.enqueue(context.applicationContext)
+                provider.sweepRunner.runIfDue(SweepSource.BOOT)
             } finally {
                 pendingResult.finish()
             }

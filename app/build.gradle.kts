@@ -72,6 +72,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.core.splashscreen)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -3,6 +3,7 @@ package app.pantauizin.ui.konfirmasi
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import app.pantauizin.data.IzinRepository
+import app.pantauizin.data.KonfirmasiView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +20,8 @@ data class KonfirmasiFormUiState(
     val buktiUri: Uri? = null,
     val buktiNama: String? = null,
     val tanggalError: String? = null,
-    val buktiError: String? = null
+    val buktiError: String? = null,
+    val riwayat: List<KonfirmasiView> = emptyList()
 )
 
 class KonfirmasiFormViewModel(
@@ -39,7 +41,8 @@ class KonfirmasiFormViewModel(
                 namaSantri = izin.nama,
                 kamarSantri = izin.kamar,
                 perluTanggalBaru = belumKembali,
-                tanggalKembaliBaru = if (belumKembali) it.tanggalKembaliBaru else null
+                tanggalKembaliBaru = if (belumKembali) it.tanggalKembaliBaru else null,
+                riwayat = izin.konfirmasi
             )
         }
     }

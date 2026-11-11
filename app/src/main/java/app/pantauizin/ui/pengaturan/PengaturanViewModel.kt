@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import app.pantauizin.data.SettingsStore
 import app.pantauizin.domain.DefaultTemplates
 import app.pantauizin.domain.TemplateVariant
+import app.pantauizin.notify.SweepSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 data class PengaturanUiState(
@@ -18,11 +20,16 @@ data class PengaturanUiState(
     val templateA: String = DefaultTemplates.A,
     val templateB: String = DefaultTemplates.B,
     val pesanErrorTemplateA: String? = null,
-    val pesanErrorTemplateB: String? = null
+    val pesanErrorTemplateB: String? = null,
+    val lastRunAt: LocalDateTime? = null,
+    val lastRunSource: SweepSource? = null,
+    val lastAlarmFiredAt: LocalDateTime? = null,
+    val nextAlarmAt: LocalDateTime? = null
 )
 
 class PengaturanViewModel(
     private val settings: SettingsStore,
+    private val onTesNotifikasi: () -> Unit = {},
     private val onReschedule: suspend () -> Unit
 ) : ViewModel() {
 
@@ -47,6 +54,27 @@ class PengaturanViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            combine(
+                settings.lastRunAt,
+                settings.lastRunSource,
+                settings.lastAlarmFiredAt,
+                settings.nextAlarmAt
+            ) { runAt, source, fired, next ->
+                _uiState.update {
+                    it.copy(
+                        lastRunAt = runAt,
+                        lastRunSource = source,
+                        lastAlarmFiredAt = fired,
+                        nextAlarmAt = next
+                    )
+                }
+            }.collect { }
+        }
+    }
+
+    fun tesNotifikasi() {
+        onTesNotifikasi()
     }
 
     suspend fun ubahJam(t: LocalTime) {

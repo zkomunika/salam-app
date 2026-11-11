@@ -52,11 +52,12 @@ class NotificationHelper(private val context: Context) : Notifier {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(app.pantauizin.R.drawable.ic_notification)
             .setContentTitle(CHANNEL_NAME)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()

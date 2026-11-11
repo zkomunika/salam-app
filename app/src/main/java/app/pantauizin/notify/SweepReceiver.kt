@@ -13,7 +13,7 @@ class SweepReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                provider.sweepRunner.runIfDue()
+                provider.sweepRunner.runIfDue(SweepSource.ALARM)
             } finally {
                 pendingResult.finish()
             }

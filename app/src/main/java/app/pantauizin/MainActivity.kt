@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import app.pantauizin.notify.NotificationHelper
 import app.pantauizin.ui.nav.AppNav
@@ -27,6 +29,9 @@ class MainActivity : ComponentActivity() {
     ) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splash = installSplashScreen()
+        val splashStart = SystemClock.uptimeMillis()
+        splash.setKeepOnScreenCondition { SystemClock.uptimeMillis() - splashStart < SPLASH_MIN_MILLIS }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNotificationPermissionIfNeeded()
@@ -70,5 +75,9 @@ class MainActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    companion object {
+        private const val SPLASH_MIN_MILLIS = 1200L
     }
 }

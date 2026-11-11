@@ -1,6 +1,9 @@
 package app.pantauizin.ui.pengaturan
 
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,11 +50,49 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.TemplateVariant
+import app.pantauizin.notify.SweepSource
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 private val TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
+private val STATUS_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm:ss")
+
+private fun labelSumber(s: SweepSource): String = when (s) {
+    SweepSource.ALARM -> "alarm"
+    SweepSource.WORKER -> "pekerja cadangan"
+    SweepSource.APP_OPEN -> "app dibuka"
+    SweepSource.BOOT -> "HP menyala"
+}
+
+private fun bukaMulaiOtomatis(context: Context) {
+    val kandidat = listOf(
+        ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+        ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"),
+        ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")
+    )
+    for (komponen in kandidat) {
+        val intent = Intent().apply {
+            component = komponen
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: Exception) {
+            // coba kandidat berikutnya
+        }
+    }
+    val detail = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.parse("package:${context.packageName}")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    try {
+        context.startActivity(detail)
+    } catch (_: Exception) {
+        Toast.makeText(context, "Buka manual: Pengaturan > Aplikasi > Mulai otomatis", Toast.LENGTH_LONG).show()
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +148,56 @@ fun PengaturanScreen(
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedButton(onClick = { showTimePicker = true }) {
                     Text("Ubah Jam (${state.jamPengingat.format(TIME_FORMAT)})")
+                }
+            }
+        }
+
+        // 1b. Status pengingat (diagnosis)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.NotificationsActive, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Status Pengingat",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                val belum = "belum pernah"
+                Text(
+                    text = "Alarm berikutnya: ${state.nextAlarmAt?.format(STATUS_FORMAT) ?: "belum dijadwalkan"}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Alarm terakhir berbunyi: ${state.lastAlarmFiredAt?.format(STATUS_FORMAT) ?: belum}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Sapuan terakhir: ${state.lastRunAt?.format(STATUS_FORMAT) ?: belum}" +
+                        (state.lastRunSource?.let { " (dari ${labelSumber(it)})" } ?: ""),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Jika \"Alarm terakhir berbunyi\" tetap kosong padahal jam pengingat sudah lewat saat app ditutup, " +
+                        "alarm dihentikan HP. Aktifkan Mulai Otomatis untuk app ini.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { viewModel.tesNotifikasi() }) {
+                        Text("Tes notifikasi")
+                    }
+                    OutlinedButton(onClick = { bukaMulaiOtomatis(context) }) {
+                        Text("Mulai Otomatis")
+                    }
                 }
             }
         }

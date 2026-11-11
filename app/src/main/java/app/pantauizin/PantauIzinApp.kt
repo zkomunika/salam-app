@@ -4,6 +4,8 @@ import android.app.Application
 import android.os.Build
 import app.pantauizin.notify.SweepRunner
 import app.pantauizin.notify.SweepRunnerProvider
+import app.pantauizin.notify.SweepSource
+import app.pantauizin.notify.SweepWorker
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +36,8 @@ class PantauIzinApp : Application(), SweepRunnerProvider {
 
     suspend fun runStartupTasks() {
         container.santriSeeder.seedIfEmpty()
-        container.sweepRunner.runIfDue()
+        SweepWorker.enqueue(this)
+        container.sweepRunner.runIfDue(SweepSource.APP_OPEN)
     }
 
     override fun onTerminate() {
