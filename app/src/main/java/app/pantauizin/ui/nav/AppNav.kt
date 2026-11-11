@@ -174,6 +174,7 @@ fun AppNav(
                         PengaturanViewModel(
                             settings = container.settingsStore,
                             onTesNotifikasi = { container.sweepRunner.tesNotifikasi() },
+                            onTesAlarm = { container.sweepRunner.scheduleTestAlarm() },
                             onReschedule = { container.sweepRunner.rescheduleOnly() }
                         )
                     }

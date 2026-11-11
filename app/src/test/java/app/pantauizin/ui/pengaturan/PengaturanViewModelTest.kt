@@ -14,6 +14,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 @RunWith(RobolectricTestRunner::class)
@@ -55,6 +56,21 @@ class PengaturanViewModelTest {
 
         vm.kembalikanTemplate(TemplateVariant.A)
         assertEquals(DefaultTemplates.A, settings.templateA.first())
+    }
+
+    @Test
+    fun tesAlarmMemicuCallbackDanMemperbaruiState() = runTest {
+        val expectedAt = LocalDateTime.of(2026, 11, 11, 12, 15, 10)
+        val vm = PengaturanViewModel(
+            settings = settings,
+            onTesAlarm = { expectedAt },
+            onReschedule = { rescheduleCount++ }
+        )
+
+        val returned = vm.tesAlarm()
+
+        assertEquals(expectedAt, returned)
+        assertEquals(expectedAt, vm.uiState.value.testAlarmAt)
     }
 }
 

@@ -8,6 +8,8 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,7 +96,7 @@ private fun bukaMulaiOtomatis(context: Context) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PengaturanScreen(
     viewModel: PengaturanViewModel,
@@ -190,10 +192,34 @@ fun PengaturanScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                state.testAlarmAt?.let { testAt ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Alarm uji dipasang untuk ${testAt.format(STATUS_FORMAT)} — segera tutup app dari Recent dan tunggu 10 detik.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(onClick = { viewModel.tesNotifikasi() }) {
                         Text("Tes notifikasi")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.tesAlarm()
+                            Toast.makeText(
+                                context,
+                                "Alarm uji dipasang 10 detik lagi. Tutup app dari Recent sekarang.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    ) {
+                        Text("Tes alarm (10 dtk)")
                     }
                     OutlinedButton(onClick = { bukaMulaiOtomatis(context) }) {
                         Text("Mulai Otomatis")

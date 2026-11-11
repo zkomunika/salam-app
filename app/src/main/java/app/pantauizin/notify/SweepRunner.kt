@@ -18,6 +18,7 @@ interface Notifier {
 
 interface Scheduler {
     fun schedule(at: LocalDateTime)
+    fun scheduleTestAlarm(at: LocalDateTime)
 }
 
 interface SweepRunnerProvider {
@@ -94,8 +95,27 @@ class SweepRunner(
         notifier.show(TEST_NOTIF_ID, "Tes notifikasi SALAM APP berhasil. Pengingat dapat tampil.")
     }
 
+    /** Menjadwalkan alarm uji satu kali agar pengguna dapat menguji notifikasi saat app ditutup. */
+    fun scheduleTestAlarm(delaySeconds: Long = TEST_ALARM_DELAY_SECONDS): LocalDateTime {
+        val at = clock().plusSeconds(delaySeconds)
+        scheduler.scheduleTestAlarm(at)
+        return at
+    }
+
+    /** Dipanggil oleh SweepReceiver saat alarm uji berbunyi; tidak mengubah tanggal sapuan harian. */
+    suspend fun runTestAlarm() {
+        val now = clock()
+        settings.recordAlarmFired(now)
+        notifier.show(
+            TEST_ALARM_NOTIF_ID,
+            "Tes alarm latar belakang SALAM APP berhasil. Pengingat saat app ditutup berfungsi."
+        )
+    }
+
     companion object {
         const val TEST_NOTIF_ID = 999_999L
+        const val TEST_ALARM_NOTIF_ID = 999_998L
+        const val TEST_ALARM_DELAY_SECONDS = 10L
 
         fun formatNotifText(jenis: NotifJenis, nama: String, kamar: String): String = when (jenis) {
             NotifJenis.LEWAT_BATAS -> "$nama kamar $kamar sudah melewati batas waktu izin"

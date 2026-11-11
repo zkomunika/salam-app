@@ -24,12 +24,14 @@ data class PengaturanUiState(
     val lastRunAt: LocalDateTime? = null,
     val lastRunSource: SweepSource? = null,
     val lastAlarmFiredAt: LocalDateTime? = null,
-    val nextAlarmAt: LocalDateTime? = null
+    val nextAlarmAt: LocalDateTime? = null,
+    val testAlarmAt: LocalDateTime? = null
 )
 
 class PengaturanViewModel(
     private val settings: SettingsStore,
     private val onTesNotifikasi: () -> Unit = {},
+    private val onTesAlarm: () -> LocalDateTime? = { null },
     private val onReschedule: suspend () -> Unit
 ) : ViewModel() {
 
@@ -75,6 +77,12 @@ class PengaturanViewModel(
 
     fun tesNotifikasi() {
         onTesNotifikasi()
+    }
+
+    fun tesAlarm(): LocalDateTime? {
+        val scheduledAt = onTesAlarm()
+        _uiState.update { it.copy(testAlarmAt = scheduledAt) }
+        return scheduledAt
     }
 
     suspend fun ubahJam(t: LocalTime) {

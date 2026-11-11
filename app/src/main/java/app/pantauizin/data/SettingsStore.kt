@@ -91,6 +91,12 @@ class SettingsStore(context: Context) {
         }
     }
 
+    suspend fun recordAlarmFired(at: LocalDateTime) {
+        dataStore.edit { prefs ->
+            prefs[KEY_LAST_ALARM_FIRED] = at.toString()
+        }
+    }
+
     suspend fun setNextAlarmAt(at: LocalDateTime) {
         dataStore.edit { prefs ->
             prefs[KEY_NEXT_ALARM] = at.toString()

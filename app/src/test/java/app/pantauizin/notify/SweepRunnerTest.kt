@@ -46,8 +46,12 @@ class SweepRunnerTest {
 
     private class FakeScheduler : Scheduler {
         val scheduled = mutableListOf<LocalDateTime>()
+        val testAlarms = mutableListOf<LocalDateTime>()
         override fun schedule(at: LocalDateTime) {
             scheduled += at
+        }
+        override fun scheduleTestAlarm(at: LocalDateTime) {
+            testAlarms += at
         }
     }
 
@@ -190,6 +194,27 @@ class SweepRunnerTest {
 
         assertTrue(runner.runIfDue())
         assertTrue(notifier.shown.isEmpty())
+    }
+
+    @Test
+    fun tesAlarmMenjadwalkanTanpaMengubahSapuanDanMenampilkanNotifSaatDipicu() = runTest {
+        currentTime = LocalDateTime.of(2026, 11, 5, 12, 0, 0)
+
+        val scheduledAt = runner.scheduleTestAlarm()
+
+        assertEquals(LocalDateTime.of(2026, 11, 5, 12, 0, 10), scheduledAt)
+        assertEquals(listOf(scheduledAt), scheduler.testAlarms)
+        assertTrue(notifier.shown.isEmpty())
+        assertEquals(null, settings.lastSweepDate.first())
+
+        currentTime = scheduledAt
+        runner.runTestAlarm()
+
+        assertEquals(1, notifier.shown.size)
+        assertEquals(SweepRunner.TEST_ALARM_NOTIF_ID, notifier.shown.first().first)
+        assertEquals(scheduledAt, settings.lastAlarmFiredAt.first())
+        assertEquals(null, settings.lastSweepDate.first())
+        assertTrue(db.notifikasiDao().getAll().isEmpty())
     }
 }
 
