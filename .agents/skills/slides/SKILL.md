@@ -1,6 +1,6 @@
 ---
 name: slides
-description: Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.
+description: "Creates strategic HTML presentations (pitch decks, sales and investor decks) with Chart.js charts, design tokens, layout patterns, and copywriting formulas. Use when the user asks for slides, a presentation, a pitch deck, or a deck."
 metadata:
   author: claudekit
   version: "1.0.0"

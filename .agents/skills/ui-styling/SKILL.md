@@ -1,6 +1,6 @@
 ---
 name: ui-styling
-description: Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.
+description: "Builds accessible interfaces with shadcn/ui, Radix, and Tailwind CSS: components, responsive layouts, theming, dark mode, plus canvas-based visual designs. Use when the user is implementing or styling UI in React-based stacks with Tailwind or shadcn/ui."
 license: MIT
 metadata:
   author: claudekit

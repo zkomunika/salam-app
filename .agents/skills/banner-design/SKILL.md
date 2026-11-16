@@ -1,6 +1,6 @@
 ---
 name: banner-design
-description: "Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options rendered as HTML/CSS and exported to PNG. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, and frontend-design when available."
+description: "Designs banners and cover images for social media, display ads, website heroes, and print, offering several art directions per request as HTML/CSS exported to PNG at exact dimensions. Use when the user asks for a banner, cover, header, hero image, ad creative, or a graphic at a specific platform size."
 license: MIT
 metadata:
   author: claudekit
