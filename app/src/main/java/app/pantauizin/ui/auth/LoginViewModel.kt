@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 data class LoginUiState(
     val email: String = "",
     val kataSandi: String = "",
+    val isRegisterMode: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -32,7 +33,14 @@ class LoginViewModel(
         _uiState.value = _uiState.value.copy(kataSandi = newPass, errorMessage = null)
     }
 
-    fun login(onSuccess: (UserProfile) -> Unit) {
+    fun toggleMode() {
+        _uiState.value = _uiState.value.copy(
+            isRegisterMode = !_uiState.value.isRegisterMode,
+            errorMessage = null
+        )
+    }
+
+    fun submit(onSuccess: (UserProfile) -> Unit) {
         val email = _uiState.value.email.trim()
         val pass = _uiState.value.kataSandi.trim()
 
@@ -47,7 +55,11 @@ class LoginViewModel(
 
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
-            val result = authManager.signIn(email, pass)
+            val result = if (_uiState.value.isRegisterMode) {
+                authManager.signUp(email, pass)
+            } else {
+                authManager.signIn(email, pass)
+            }
             result.fold(
                 onSuccess = { profile ->
                     _uiState.value = _uiState.value.copy(isLoading = false)
@@ -56,12 +68,14 @@ class LoginViewModel(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Gagal masuk"
+                        errorMessage = error.message ?: if (_uiState.value.isRegisterMode) "Gagal membuat akun" else "Gagal masuk"
                     )
                 }
             )
         }
     }
+
+    fun login(onSuccess: (UserProfile) -> Unit) = submit(onSuccess)
 
     companion object {
         fun provideFactory(authManager: AuthManager): ViewModelProvider.Factory =

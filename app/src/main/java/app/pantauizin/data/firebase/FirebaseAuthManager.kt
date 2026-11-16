@@ -6,6 +6,8 @@ import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +22,7 @@ interface AuthManager {
     val currentUser: StateFlow<UserProfile?>
     val isLoading: StateFlow<Boolean>
     suspend fun signIn(email: String, password: String): Result<UserProfile>
+    suspend fun signUp(email: String, password: String): Result<UserProfile>
     fun signOut()
 }
 
@@ -154,6 +157,40 @@ class FirebaseAuthManager(
             Result.failure(Exception("Koneksi gagal. Periksa jaringan internet Anda"))
         } catch (e: Exception) {
             Result.failure(Exception(e.localizedMessage ?: "Terjadi kesalahan saat masuk"))
+        }
+    }
+
+    override suspend fun signUp(email: String, password: String): Result<UserProfile> {
+        val currentAuth = auth ?: return Result.failure(IllegalStateException("Firebase Auth belum terhubung"))
+        val db = firestore ?: return Result.failure(IllegalStateException("Firestore belum terhubung"))
+
+        return try {
+            val cleanEmail = email.trim()
+            val cleanPass = password.trim()
+            if (cleanEmail.isEmpty() || cleanPass.isEmpty()) {
+                return Result.failure(IllegalArgumentException("Email dan kata sandi tidak boleh kosong"))
+            }
+            if (cleanPass.length < 6) {
+                return Result.failure(IllegalArgumentException("Kata sandi minimal 6 karakter"))
+            }
+
+            val authResult = currentAuth.createUserWithEmailAndPassword(cleanEmail, cleanPass).await()
+            val user = authResult.user ?: throw IllegalStateException("Gagal membuat akun pengguna")
+
+            val newProfile = createDefaultProfile(user.uid, user.email)
+            val docRef = db.collection("users").document(user.uid)
+            docRef.set(newProfile).await()
+
+            _currentUser.value = newProfile
+            Result.success(newProfile)
+        } catch (e: FirebaseAuthUserCollisionException) {
+            Result.failure(Exception("Email ini sudah terdaftar. Silakan gunakan tombol Masuk."))
+        } catch (e: FirebaseAuthWeakPasswordException) {
+            Result.failure(Exception("Kata sandi terlalu lemah (minimal 6 karakter)."))
+        } catch (e: FirebaseNetworkException) {
+            Result.failure(Exception("Koneksi gagal. Periksa jaringan internet Anda"))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.localizedMessage ?: "Gagal membuat akun"))
         }
     }
 

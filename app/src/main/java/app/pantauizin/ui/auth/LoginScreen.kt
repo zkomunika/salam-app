@@ -37,6 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -135,14 +136,17 @@ fun LoginScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "Masuk Pengurus",
+                            text = if (state.isRegisterMode) "Daftar Akun Baru" else "Masuk Pengurus",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
 
                         Text(
-                            text = "Gunakan akun pengurus yang telah didaftarkan oleh admin.",
+                            text = if (state.isRegisterMode)
+                                "Buat akun pengurus atau admin (minimal 6 karakter sandi)."
+                            else
+                                "Gunakan akun yang telah didaftarkan untuk masuk.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -225,7 +229,7 @@ fun LoginScreen(
                             keyboardActions = KeyboardActions(
                                 onDone = {
                                     focusManager.clearFocus()
-                                    viewModel.login(onLoginSuccess)
+                                    viewModel.submit(onLoginSuccess)
                                 }
                             ),
                             shape = RoundedCornerShape(14.dp),
@@ -234,11 +238,11 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Tombol Masuk
+                        // Tombol Submit (Masuk / Daftar)
                         Button(
                             onClick = {
                                 focusManager.clearFocus()
-                                viewModel.login(onLoginSuccess)
+                                viewModel.submit(onLoginSuccess)
                             },
                             enabled = !state.isLoading,
                             modifier = Modifier
@@ -257,13 +261,30 @@ fun LoginScreen(
                                 )
                             } else {
                                 Text(
-                                    text = "Masuk",
+                                    text = if (state.isRegisterMode) "Daftar & Masuk" else "Masuk",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 )
                             }
+                        }
+
+                        // Toggle Mode Button
+                        TextButton(
+                            onClick = viewModel::toggleMode,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = if (state.isRegisterMode)
+                                    "Sudah punya akun? Masuk di sini"
+                                else
+                                    "Belum punya akun / Buat akun baru? Klik di sini",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
                         }
                     }
                 }

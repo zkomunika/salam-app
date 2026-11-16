@@ -28,6 +28,16 @@ class FakeAuthManager(var shouldFail: Boolean = false) : AuthManager {
         }
     }
 
+    override suspend fun signUp(email: String, password: String): Result<UserProfile> {
+        return if (shouldFail) {
+            Result.failure(Exception("Gagal membuat akun"))
+        } else {
+            val user = UserProfile(uid = "uid123", email = email)
+            _currentUser.value = user
+            Result.success(user)
+        }
+    }
+
     override fun signOut() {
         _currentUser.value = null
     }
@@ -82,6 +92,25 @@ class LoginViewModelTest {
         vm.onEmailChange("admin@pesantren.id")
         vm.onKataSandiChange("rahasia123")
         vm.login(onSuccess = {
+            berhasil = true
+        })
+
+        assertTrue(berhasil)
+        assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun toggleModeDanDaftarAkunBaruBerhasil() {
+        val fakeAuth = FakeAuthManager(shouldFail = false)
+        val vm = LoginViewModel(fakeAuth)
+
+        vm.toggleMode()
+        assertTrue(vm.uiState.value.isRegisterMode)
+
+        var berhasil = false
+        vm.onEmailChange("baru@pesantren.id")
+        vm.onKataSandiChange("passwordBaru123")
+        vm.submit(onSuccess = {
             berhasil = true
         })
 
