@@ -26,13 +26,13 @@ Unified design skill: brand, tokens, UI, logo, CIP, slides, banners, social phot
 
 | Task | Sub-skill | Details |
 |------|-----------|---------|
-| Brand identity, voice, assets | `brand` | External skill |
-| Tokens, specs, CSS vars | `design-system` | External skill |
-| shadcn/ui, Tailwind, code | `ui-styling` | External skill |
+| Brand identity, voice, assets | `brand` | Sibling skill in `.agents/skills/` |
+| Tokens, specs, CSS vars | `design-system` | Sibling skill in `.agents/skills/` |
+| shadcn/ui, Tailwind, code | `ui-styling` | Sibling skill in `.agents/skills/` |
+| Presentations, pitch decks | `slides` | Sibling skill in `.agents/skills/` |
+| Banners, covers, headers | `banner-design` | Sibling skill in `.agents/skills/` |
 | Logo creation, AI generation | Logo (built-in) | `references/logo-design.md` |
 | CIP mockups, deliverables | CIP (built-in) | `references/cip-design.md` |
-| Presentations, pitch decks | Slides (built-in) | `references/slides.md` |
-| Banners, covers, headers | Banner (built-in) | `references/banner-sizes-and-styles.md` |
 | Social media images/photos | Social Photos (built-in) | `references/social-photos-design.md` |
 | SVG icons, icon sets | Icon (built-in) | `references/icon-design.md` |
 
@@ -56,14 +56,14 @@ python3 .agents/skills/design/scripts/logo/search.py "healthcare medical" --doma
 
 ### Logo: Generate with AI
 
-**ALWAYS** generate output logo images with white background.
+Generate output logo images with a clean white background so they can be easily composited onto CIP mockups and documents.
 
 ```bash
 python3 .agents/skills/design/scripts/logo/generate.py --brand "TechFlow" --style minimalist --industry tech
 python3 .agents/skills/design/scripts/logo/generate.py --prompt "coffee shop vintage badge" --style vintage
 ```
 
-**IMPORTANT:** When scripts fail, try to fix them directly.
+When a script fails, diagnose the error and fix the invocation or missing dependency directly.
 
 After generation, ask the user directly in chat whether they want an HTML preview and wait for the answer before continuing. If yes, use the `ui-ux-pro-max` skill for the gallery.
 
@@ -111,69 +111,6 @@ python3 .agents/skills/design/scripts/cip/render-html.py --brand "TopGroup" --in
 ```
 
 **Tip:** If no logo exists, use Logo Design section above first.
-
-## Slides (Built-in)
-
-Strategic HTML presentations with Chart.js, design tokens, copywriting formulas.
-
-Load `references/slides-create.md` for the creation workflow.
-
-### Slides: Knowledge Base
-
-| Topic | File |
-|-------|------|
-| Creation Guide | `references/slides-create.md` |
-| Layout Patterns | `references/slides-layout-patterns.md` |
-| HTML Template | `references/slides-html-template.md` |
-| Copywriting | `references/slides-copywriting-formulas.md` |
-| Strategies | `references/slides-strategies.md` |
-
-## Banner Design (Built-in)
-
-22 art direction styles across social, ads, web, print. Uses `frontend-design`, `ai-artist`, `ai-multimodal`, `chrome-devtools` skills.
-
-Load `references/banner-sizes-and-styles.md` for complete sizes and styles reference.
-
-### Banner: Workflow
-
-1. **Gather requirements** — ask the user directly in chat and wait for the answer before continuing (purpose, platform, content, brand, style, quantity)
-2. **Research** — Activate `ui-ux-pro-max`, browse Pinterest for references
-3. **Design** — Create HTML/CSS banner with `frontend-design`, generate visuals with `ai-artist`/`ai-multimodal`
-4. **Export** — Screenshot to PNG at exact dimensions via `chrome-devtools`
-5. **Present** — Show all options side-by-side, iterate on feedback
-
-### Banner: Quick Size Reference
-
-| Platform | Type | Size (px) |
-|----------|------|-----------|
-| Facebook | Cover | 820 x 312 |
-| Twitter/X | Header | 1500 x 500 |
-| LinkedIn | Personal | 1584 x 396 |
-| YouTube | Channel art | 2560 x 1440 |
-| Instagram | Story | 1080 x 1920 |
-| Instagram | Post | 1080 x 1080 |
-| Google Ads | Med Rectangle | 300 x 250 |
-| Website | Hero | 1920 x 600-1080 |
-
-### Banner: Top Art Styles
-
-| Style | Best For |
-|-------|----------|
-| Minimalist | SaaS, tech |
-| Bold Typography | Announcements |
-| Gradient | Modern brands |
-| Photo-Based | Lifestyle, e-com |
-| Geometric | Tech, fintech |
-| Glassmorphism | SaaS, apps |
-| Neon/Cyberpunk | Gaming, events |
-
-### Banner: Design Rules
-
-- Safe zones: critical content in central 70-80%
-- One CTA per banner, bottom-right, min 44px height
-- Max 2 fonts, min 16px body, ≥32px headline
-- Text under 20% for ads (Meta penalizes)
-- Print: 300 DPI, CMYK, 3-5mm bleed
 
 ## Icon Design (Built-in)
 
@@ -245,7 +182,7 @@ Load `references/social-photos-design.md` for sizes, templates, best practices.
 
 1. **Logo** → `scripts/logo/generate.py` → Generate logo variants
 2. **CIP** → `scripts/cip/generate.py --logo ...` → Create deliverable mockups
-3. **Presentation** → Load `references/slides-create.md` → Build pitch deck
+3. **Presentation** → Use the `slides` skill → Build pitch deck
 
 ### New Design System
 
@@ -266,12 +203,6 @@ Load `references/social-photos-design.md` for sizes, templates, best practices.
 | CIP Deliverables | `references/cip-deliverable-guide.md` |
 | CIP Styles | `references/cip-style-guide.md` |
 | CIP Prompts | `references/cip-prompt-engineering.md` |
-| Slides Create | `references/slides-create.md` |
-| Slides Layouts | `references/slides-layout-patterns.md` |
-| Slides Template | `references/slides-html-template.md` |
-| Slides Copy | `references/slides-copywriting-formulas.md` |
-| Slides Strategy | `references/slides-strategies.md` |
-| Banner Sizes & Styles | `references/banner-sizes-and-styles.md` |
 | Social Photos Guide | `references/social-photos-design.md` |
 | Icon Design Guide | `references/icon-design.md` |
 

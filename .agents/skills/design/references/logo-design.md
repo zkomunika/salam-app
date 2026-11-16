@@ -33,7 +33,7 @@ python3 .agents/skills/design/scripts/logo/search.py "healthcare medical" --doma
 
 ### Generate Logo
 
-**ALWAYS** use white background for output logos.
+Use a clean white background for output logos so assets isolate cleanly on mockups and documents.
 
 ```bash
 python3 .agents/skills/design/scripts/logo/generate.py --brand "TechFlow" --style minimalist --industry tech

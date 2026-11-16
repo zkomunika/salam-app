@@ -4,16 +4,14 @@ When to use each design sub-skill.
 
 ## Skill Overview
 
-| Skill | Purpose | Key Files |
-|-------|---------|-----------|
-| brand | Brand identity, voice, assets | SKILL.md + 10 references + 3 scripts |
-| design-system | Token architecture, specs | SKILL.md + 7 references + 2 scripts |
-| ui-styling | Component implementation | SKILL.md + 7 references + 2 scripts |
-| logo-design | AI logo generation (55 styles, 30 palettes) | SKILL.md + 4 references + 2 scripts |
-| cip-design | Corporate Identity Program (50 deliverables) | SKILL.md + 3 references + 3 scripts |
-| slides | HTML presentations with Chart.js | SKILL.md + 4 references |
-| banner-design | Banners for social, ads, web, print (22 styles) | SKILL.md + 1 reference |
-| icon-design | SVG icon generation (15 styles, Gemini 3.1 Pro) | SKILL.md + 1 reference + 1 script |
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `slides` | Strategic HTML presentations with Chart.js | `.agents/skills/slides/` |
+| `banner-design` | Banners and covers for social, ads, web, print | `.agents/skills/banner-design/` |
+| `design` | Logo, CIP mockups, SVG icons, social photos | `.agents/skills/design/` |
+| `design-system` | Token architecture and component specs | `.agents/skills/design-system/` |
+| `ui-styling` | shadcn/ui and Tailwind CSS implementation | `.agents/skills/ui-styling/` |
+| `brand` | Brand voice, visual identity, assets | `.agents/skills/brand/` |
 
 ## Routing by Task Type
 
@@ -47,7 +45,7 @@ When to use each design sub-skill.
 - Build accessible components
 
 ### Logo Design Tasks
-**→ logo-design**
+**→ design (`references/logo-design.md`)**
 
 - Create logos with AI (Gemini Nano Banana)
 - Search logo styles, color palettes, industry guidelines
@@ -55,7 +53,7 @@ When to use each design sub-skill.
 - Explore 55+ styles (minimalist, vintage, luxury, geometric, etc.)
 
 ### Corporate Identity Program Tasks
-**→ cip-design**
+**→ design (`references/cip-design.md`)**
 
 - Generate CIP deliverables (business cards, letterheads, signage, vehicles, apparel)
 - Create CIP briefs with industry/style analysis
@@ -70,7 +68,7 @@ When to use each design sub-skill.
 - Apply copywriting formulas to slide content
 - Use layout patterns and design tokens
 
-### Banner Design Tasks
+### Banner and Cover Tasks
 **→ banner-design**
 
 - Design banners for social media (Facebook, Twitter, LinkedIn, YouTube, Instagram)
@@ -79,36 +77,34 @@ When to use each design sub-skill.
 - Print banners and covers
 - 22 art direction styles (minimalist, bold typography, gradient, glassmorphism, etc.)
 
-### Icon Design Tasks
-**→ icon-design**
+### Icon & Social Photos Tasks
+**→ design (`references/icon-design.md`, `references/social-photos-design.md`)**
 
 - Generate SVG icons with AI (Gemini 3.1 Pro Preview)
-- Batch icon variations in multiple styles
-- Multi-size export (16px, 24px, 32px, 48px)
-- 15 styles: outlined, filled, duotone, rounded, sharp, gradient, etc.
-- 12 categories: navigation, action, communication, media, commerce, data
+- Multi-size SVG icon export (16px, 24px, 32px, 48px)
+- Multi-platform social media images exported via Playwright
 
 ## Routing by Question Type
 
 | Question | Skill |
 |----------|-------|
-| "What color should this be?" | brand |
-| "How do I create a token for X?" | design-system |
-| "How do I build a button component?" | ui-styling |
-| "Is this on-brand?" | brand |
-| "Should I use a CSS variable here?" | design-system |
-| "How do I add dark mode?" | ui-styling |
-| "Create a logo for my brand" | logo-design |
-| "Generate business card mockups" | cip-design |
-| "Create a pitch deck" | slides |
-| "Design brand identity package" | cip-design |
-| "What logo style fits my industry?" | logo-design |
-| "Design a Facebook cover" | banner-design |
-| "Create ad banners for Google" | banner-design |
-| "Make a website hero banner" | banner-design |
-| "Generate a settings icon" | icon-design |
-| "Create SVG icons for my app" | icon-design |
-| "Design an icon set" | icon-design |
+| "What color should this be?" | `brand` |
+| "How do I create a token for X?" | `design-system` |
+| "How do I build a button component?" | `ui-styling` |
+| "Is this on-brand?" | `brand` |
+| "Should I use a CSS variable here?" | `design-system` |
+| "How do I add dark mode?" | `ui-styling` |
+| "Create a logo for my brand" | `design` |
+| "Generate business card mockups" | `design` |
+| "Create a pitch deck" | `slides` |
+| "Design brand identity package" | `design` |
+| "What logo style fits my industry?" | `design` |
+| "Design a Facebook cover" | `banner-design` |
+| "Create ad banners for Google" | `banner-design` |
+| "Make a website hero banner" | `banner-design` |
+| "Generate a settings icon" | `design` |
+| "Create SVG icons for my app" | `design` |
+| "Create social media post images" | `design` |
 
 ## Multi-Skill Workflows
 
@@ -181,27 +177,20 @@ npx shadcn@latest add button card input
 
 ## When to Use Multiple Skills
 
-Use **all eight** when:
-- Complete brand package from scratch (logo → CIP → presentation)
+Use **`design` + `slides` + `brand` + `design-system`** when:
+- Building a complete brand package from scratch (logo → CIP → presentation)
 
-Use **brand + design-system + ui-styling** when:
-- Design system setup and implementation
+Use **`brand` + `design-system` + `ui-styling`** when:
+- Setting up and implementing a design system in React/Tailwind
 
-Use **logo-design + cip-design** when:
-- Complete brand identity package with deliverable mockups
+Use **`banner-design` + `brand`** when:
+- Producing branded banners and covers across social platforms
 
-Use **logo-design + cip-design + slides** when:
-- Brand pitch: generate logo, create CIP mockups, build pitch deck
+Use **`design` + `design-system`** when:
+- Creating custom SVG icon sets or social photos aligned with design tokens
 
-Use **banner-design + brand** when:
-- Social media presence: branded banners across all platforms
+Use **`brand` + `design-system`** when:
+- Defining visual language without component code implementation
 
-Use **icon-design + design-system** when:
-- Custom icon set matching design tokens and component specs
-
-Use **brand + design-system** when:
-- Defining design language without implementation
-
-Use **design-system + ui-styling** when:
-- Implementing existing brand in code
-- Building component library
+Use **`design-system` + `ui-styling`** when:
+- Implementing an existing brand in code or building a component library
