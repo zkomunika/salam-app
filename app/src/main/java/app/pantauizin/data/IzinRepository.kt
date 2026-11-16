@@ -1,6 +1,7 @@
 package app.pantauizin.data
 
 import android.net.Uri
+import app.pantauizin.data.firebase.FirestoreSyncManager
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
 import app.pantauizin.domain.DeadlineCalculator
@@ -31,7 +32,8 @@ sealed interface SaveIzinResult {
 class IzinRepository(
     private val izinDao: IzinDao,
     private val konfirmasiDao: KonfirmasiDao,
-    private val bukti: BuktiStorage
+    private val bukti: BuktiStorage,
+    private val syncManager: FirestoreSyncManager? = null
 ) {
     fun observe(): Flow<List<IzinView>> =
         izinDao.observeAll().map { list -> list.map { it.toView() } }
@@ -68,6 +70,9 @@ class IzinRepository(
                 dibuatPada = Instant.now()
             )
         )
+        try {
+            izinDao.get(id)?.let { syncManager?.uploadIzin(it) }
+        } catch (_: Exception) {}
         return SaveIzinResult.Ok(id)
     }
 
@@ -100,6 +105,9 @@ class IzinRepository(
                 noWaWali = noWa
             )
         )
+        try {
+            izinDao.get(id)?.let { syncManager?.uploadIzin(it) }
+        } catch (_: Exception) {}
         return SaveIzinResult.Ok(id)
     }
 
@@ -109,16 +117,25 @@ class IzinRepository(
             k.buktiPath?.let { bukti.hapus(it) }
         }
         izinDao.delete(id)
+        try {
+            syncManager?.deleteIzin(id)
+        } catch (_: Exception) {}
     }
 
     suspend fun tandaiKembali(id: Long, tanggal: LocalDate) {
         val current = izinDao.get(id)?.izin ?: return
         izinDao.update(current.copy(tanggalKembali = tanggal))
+        try {
+            izinDao.get(id)?.let { syncManager?.uploadIzin(it) }
+        } catch (_: Exception) {}
     }
 
     suspend fun batalKembali(id: Long) {
         val current = izinDao.get(id)?.izin ?: return
         izinDao.update(current.copy(tanggalKembali = null))
+        try {
+            izinDao.get(id)?.let { syncManager?.uploadIzin(it) }
+        } catch (_: Exception) {}
     }
 
     suspend fun tambahKonfirmasi(
@@ -137,6 +154,9 @@ class IzinRepository(
                 dibuatPada = Instant.now()
             )
         )
+        try {
+            izinDao.get(izinId)?.let { syncManager?.uploadIzin(it) }
+        } catch (_: Exception) {}
     }
 }
 

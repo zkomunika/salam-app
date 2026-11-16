@@ -1,6 +1,7 @@
 package app.pantauizin.data
 
 import android.database.sqlite.SQLiteConstraintException
+import app.pantauizin.data.firebase.FirestoreSyncManager
 import app.pantauizin.domain.SantriItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -11,7 +12,10 @@ sealed interface SantriResult {
     data object Invalid : SantriResult
 }
 
-class SantriRepository(private val dao: SantriDao) {
+class SantriRepository(
+    private val dao: SantriDao,
+    private val syncManager: FirestoreSyncManager? = null
+) {
     fun observe(): Flow<List<SantriItem>> =
         dao.observeAll().map { list ->
             list.map { e ->
@@ -26,7 +30,11 @@ class SantriRepository(private val dao: SantriDao) {
         if (dao.findByNama(rapiNama) != null) return SantriResult.NamaKembar
 
         return try {
-            dao.insert(SantriEntity(nama = rapiNama, kamar = rapiKamar, aktif = true))
+            val entity = SantriEntity(nama = rapiNama, kamar = rapiKamar, aktif = true)
+            val generatedId = dao.insert(entity)
+            try {
+                syncManager?.uploadSantri(entity.copy(id = generatedId))
+            } catch (_: Exception) {}
             SantriResult.Ok
         } catch (_: SQLiteConstraintException) {
             SantriResult.NamaKembar
@@ -43,7 +51,11 @@ class SantriRepository(private val dao: SantriDao) {
         if (existingByName != null && existingByName.id != id) return SantriResult.NamaKembar
 
         return try {
-            dao.update(current.copy(nama = rapiNama, kamar = rapiKamar))
+            val updated = current.copy(nama = rapiNama, kamar = rapiKamar)
+            dao.update(updated)
+            try {
+                syncManager?.uploadSantri(updated)
+            } catch (_: Exception) {}
             SantriResult.Ok
         } catch (_: SQLiteConstraintException) {
             SantriResult.NamaKembar
@@ -52,7 +64,11 @@ class SantriRepository(private val dao: SantriDao) {
 
     suspend fun setAktif(id: Long, aktif: Boolean) {
         val current = dao.getById(id) ?: return
-        dao.update(current.copy(aktif = aktif))
+        val updated = current.copy(aktif = aktif)
+        dao.update(updated)
+        try {
+            syncManager?.uploadSantri(updated)
+        } catch (_: Exception) {}
     }
 
     private fun rapikan(s: String): String = s.trim().replace(Regex("\\s+"), " ")

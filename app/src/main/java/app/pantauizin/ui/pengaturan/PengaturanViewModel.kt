@@ -3,6 +3,9 @@ package app.pantauizin.ui.pengaturan
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.pantauizin.data.SettingsStore
+import app.pantauizin.data.firebase.FirebaseAuthManager
+import app.pantauizin.data.firebase.FirestoreSyncManager
+import app.pantauizin.data.firebase.UserProfile
 import app.pantauizin.domain.DefaultTemplates
 import app.pantauizin.domain.TemplateVariant
 import app.pantauizin.notify.SweepSource
@@ -25,11 +28,17 @@ data class PengaturanUiState(
     val lastRunSource: SweepSource? = null,
     val lastAlarmFiredAt: LocalDateTime? = null,
     val nextAlarmAt: LocalDateTime? = null,
-    val testAlarmAt: LocalDateTime? = null
+    val testAlarmAt: LocalDateTime? = null,
+    val currentUser: UserProfile? = null,
+    val isMigrating: Boolean = false,
+    val migrationProgress: String? = null,
+    val migrationResult: String? = null
 )
 
 class PengaturanViewModel(
     private val settings: SettingsStore,
+    private val authManager: FirebaseAuthManager? = null,
+    private val syncManager: FirestoreSyncManager? = null,
     private val onTesNotifikasi: () -> Unit = {},
     private val onTesAlarm: () -> LocalDateTime? = { null },
     private val onReschedule: suspend () -> Unit
@@ -39,6 +48,13 @@ class PengaturanViewModel(
     val uiState: StateFlow<PengaturanUiState> = _uiState.asStateFlow()
 
     init {
+        authManager?.let { auth ->
+            viewModelScope.launch {
+                auth.currentUser.collect { user ->
+                    _uiState.update { it.copy(currentUser = user) }
+                }
+            }
+        }
         viewModelScope.launch {
             combine(
                 settings.jamPengingat,
@@ -72,6 +88,40 @@ class PengaturanViewModel(
                     )
                 }
             }.collect { }
+        }
+    }
+
+    fun logout() {
+        authManager?.signOut()
+    }
+
+    fun migrasiDataKeCloud() {
+        val sm = syncManager ?: return
+        _uiState.update { it.copy(isMigrating = true, migrationResult = null) }
+        viewModelScope.launch {
+            val result = sm.migrateAllLocalToCloud { cur, total ->
+                _uiState.update { it.copy(migrationProgress = "$cur / $total terunggah") }
+            }
+            result.fold(
+                onSuccess = { count ->
+                    _uiState.update {
+                        it.copy(
+                            isMigrating = false,
+                            migrationProgress = null,
+                            migrationResult = "Berhasil mengunggah $count data ke Firestore!"
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isMigrating = false,
+                            migrationProgress = null,
+                            migrationResult = "Gagal migrasi: ${err.message}"
+                        )
+                    }
+                }
+            )
         }
     }
 

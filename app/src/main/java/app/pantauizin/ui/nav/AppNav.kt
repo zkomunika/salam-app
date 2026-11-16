@@ -71,6 +71,32 @@ fun AppNav(
     var konfirmasiIzinId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showDataSantri by rememberSaveable { mutableStateOf(false) }
 
+    if (container != null) {
+        val currentUser by container.authManager.currentUser.collectAsState()
+        val isAuthLoading by container.authManager.isLoading.collectAsState()
+
+        if (isAuthLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.material3.CircularProgressIndicator()
+            }
+            return
+        }
+
+        if (currentUser == null) {
+            val loginVm = remember(container) {
+                app.pantauizin.ui.auth.LoginViewModel(container.authManager)
+            }
+            app.pantauizin.ui.auth.LoginScreen(
+                viewModel = loginVm,
+                onLoginSuccess = { }
+            )
+            return
+        }
+    }
+
     if (container != null && (showAddIzin || editIzinId != null)) {
         BackHandler {
             showAddIzin = false
@@ -245,6 +271,8 @@ fun AppNav(
                     val vm = remember(container) {
                         PengaturanViewModel(
                             settings = container.settingsStore,
+                            authManager = container.authManager,
+                            syncManager = container.syncManager,
                             onTesNotifikasi = { container.sweepRunner.tesNotifikasi() },
                             onTesAlarm = { container.sweepRunner.scheduleTestAlarm() },
                             onReschedule = { container.sweepRunner.rescheduleOnly() }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "27120778861",
+    "project_id": "salam-app-5f6fe",
+    "storage_bucket": "salam-app-5f6fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:27120778861:android:b1293ad0a46e5f85310964",
+        "android_client_info": {
+          "package_name": "app.pantauizin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWVs_3L-yp2r_HuqlMB7Gcmb_heEo771E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

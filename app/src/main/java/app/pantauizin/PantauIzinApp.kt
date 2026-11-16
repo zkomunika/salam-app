@@ -35,12 +35,14 @@ class PantauIzinApp : Application(), SweepRunnerProvider {
     }
 
     suspend fun runStartupTasks() {
+        container.syncManager.startRealtimeSync(appScope)
         container.santriSeeder.seedIfEmpty()
         SweepWorker.enqueue(this)
         container.sweepRunner.runIfDue(SweepSource.APP_OPEN)
     }
 
     override fun onTerminate() {
+        container.syncManager.stopRealtimeSync()
         appScope.cancel()
         super.onTerminate()
     }

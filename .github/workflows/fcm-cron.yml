@@ -1,0 +1,30 @@
+name: FCM Terlambat Sweep Cron
+
+on:
+  schedule:
+    # 01:00 UTC = 08:00 WIB (Pagi)
+    - cron: '0 1 * * *'
+    # 10:00 UTC = 17:00 WIB (Sore)
+    - cron: '0 10 * * *'
+  workflow_dispatch: # Memungkinkan eksekusi manual kapan saja
+
+jobs:
+  sweep-and-notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase Admin
+        run: npm install firebase-admin
+
+      - name: Run FCM Sweep Script
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: node scripts/fcm-sweep.js

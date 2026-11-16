@@ -20,13 +20,31 @@ class AppContainer(context: Context) {
     val database: AppDatabase = AppDatabase.build(appContext)
     val settingsStore: SettingsStore = SettingsStore(appContext)
     val buktiStorage: BuktiStorage = AndroidBuktiStorage(appContext)
-    val santriRepository: SantriRepository = SantriRepository(database.santriDao())
+    val authManager: app.pantauizin.data.firebase.FirebaseAuthManager by lazy {
+        app.pantauizin.data.firebase.FirebaseAuthManager(context = appContext)
+    }
+    val syncManager: app.pantauizin.data.firebase.FirestoreSyncManager by lazy {
+        app.pantauizin.data.firebase.FirestoreSyncManager(
+            context = appContext,
+            database = database,
+            buktiStorage = buktiStorage
+        )
+    }
+    val santriRepository: SantriRepository by lazy {
+        SantriRepository(
+            dao = database.santriDao(),
+            syncManager = syncManager
+        )
+    }
     val santriSeeder: SantriSeeder = SantriSeeder(appContext, database.santriDao())
-    val izinRepository: IzinRepository = IzinRepository(
-        izinDao = database.izinDao(),
-        konfirmasiDao = database.konfirmasiDao(),
-        bukti = buktiStorage
-    )
+    val izinRepository: IzinRepository by lazy {
+        IzinRepository(
+            izinDao = database.izinDao(),
+            konfirmasiDao = database.konfirmasiDao(),
+            bukti = buktiStorage,
+            syncManager = syncManager
+        )
+    }
     val notifikasiRepository: NotifikasiRepository = NotifikasiRepository(database.notifikasiDao())
     val notificationHelper: NotificationHelper = NotificationHelper(appContext)
     val alarmScheduler: AlarmScheduler = AlarmScheduler(appContext)

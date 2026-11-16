@@ -24,7 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.AlertDialog
@@ -133,6 +136,80 @@ fun PengaturanScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // 0. Akun Pengurus & Cloud Sync
+        if (state.currentUser != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = cardBorder,
+                elevation = cardElevation
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = state.currentUser?.email ?: "Pengurus",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (state.currentUser?.isAdmin == true) "Role: Admin Asrama" else "Role: Pengurus",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (state.currentUser?.isAdmin == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (state.currentUser?.isAdmin == true) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Sinkronisasi Cloud:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Button(
+                            onClick = { viewModel.migrasiDataKeCloud() },
+                            enabled = !state.isMigrating,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (state.isMigrating) (state.migrationProgress ?: "Mengunggah...") else "Unggah Data Lokal ke Cloud")
+                        }
+                        if (state.migrationResult != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = state.migrationResult ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.logout() },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Keluar Akun (Logout)")
+                    }
+                }
+            }
+        }
+
         // 1. Jam pengingat harian
         Card(
             modifier = Modifier.fillMaxWidth(),
