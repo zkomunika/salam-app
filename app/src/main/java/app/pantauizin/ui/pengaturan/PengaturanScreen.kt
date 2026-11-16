@@ -30,10 +30,12 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -60,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.TemplateVariant
 import app.pantauizin.notify.SweepSource
+import app.pantauizin.ui.components.UpdateDialog
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -115,6 +118,7 @@ fun PengaturanScreen(
     val scope = rememberCoroutineScope()
 
     var showTimePicker by remember { mutableStateOf(false) }
+    var showPublishUpdateDialog by remember { mutableStateOf(false) }
     var selectedTemplateTab by rememberSaveable { mutableStateOf(TemplateVariant.A) }
     var draftTemplateA by remember { mutableStateOf(state.templateA) }
     var draftTemplateB by remember { mutableStateOf(state.templateB) }
@@ -476,6 +480,149 @@ fun PengaturanScreen(
             }
             }
         }
+
+        // 4. Pembaruan Aplikasi (In-App Update)
+        if (viewModel.updateManager != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = cardBorder,
+                elevation = cardElevation
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.SystemUpdate, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Pembaruan Aplikasi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Versi terpasang saat ini: v${viewModel.updateManager.currentVersionName} (kode ${viewModel.updateManager.currentVersionCode})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    state.updateCheckMessage?.let { msg ->
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = msg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel.cekPembaruan() },
+                            enabled = !state.isCheckingUpdate,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) {
+                            Text(if (state.isCheckingUpdate) "Memeriksa..." else "Cek Pembaruan")
+                        }
+                        if (state.currentUser?.isAdmin == true) {
+                            Button(
+                                onClick = { showPublishUpdateDialog = true },
+                                enabled = !state.isPublishingUpdate,
+                                modifier = Modifier.heightIn(min = 48.dp)
+                            ) {
+                                Text("Rilis Update (Admin)")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    state.foundUpdate?.let { updateInfo ->
+        viewModel.updateManager?.let { um ->
+            UpdateDialog(
+                updateInfo = updateInfo,
+                updateManager = um,
+                onDismiss = { viewModel.tutupDialogUpdate() }
+            )
+        }
+    }
+
+    if (showPublishUpdateDialog && viewModel.updateManager != null) {
+        var verCodeStr by remember { mutableStateOf((viewModel.updateManager.currentVersionCode + 1).toString()) }
+        var verNameStr by remember { mutableStateOf("") }
+        var apkUrlStr by remember { mutableStateOf("") }
+        var notesStr by remember { mutableStateOf("") }
+        var forceChecked by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showPublishUpdateDialog = false },
+            title = { Text("Publikasikan Info Update") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = verCodeStr,
+                        onValueChange = { verCodeStr = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Kode Versi (contoh: 3)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = verNameStr,
+                        onValueChange = { verNameStr = it },
+                        label = { Text("Nama Versi (contoh: 1.3)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = apkUrlStr,
+                        onValueChange = { apkUrlStr = it },
+                        label = { Text("Link Download Langsung APK (.apk)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = notesStr,
+                        onValueChange = { notesStr = it },
+                        label = { Text("Catatan Pembaruan") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = forceChecked,
+                            onCheckedChange = { forceChecked = it }
+                        )
+                        Text("Wajib update (tidak bisa dilewati)")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = verCodeStr.isNotBlank() && verNameStr.isNotBlank() && apkUrlStr.isNotBlank(),
+                    onClick = {
+                        val code = verCodeStr.toIntOrNull() ?: return@Button
+                        viewModel.publikasikanUpdate(
+                            versionCode = code,
+                            versionName = verNameStr.trim(),
+                            apkUrl = apkUrlStr.trim(),
+                            releaseNotes = notesStr.trim(),
+                            forceUpdate = forceChecked
+                        )
+                        showPublishUpdateDialog = false
+                    }
+                ) {
+                    Text("Publikasikan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPublishUpdateDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 
     if (showTimePicker) {

@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +41,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import app.pantauizin.AppContainer
+import app.pantauizin.data.firebase.AppUpdateInfo
 import app.pantauizin.notify.NotificationHelper
+import app.pantauizin.ui.components.UpdateDialog
 import app.pantauizin.ui.form.IzinFormScreen
 import app.pantauizin.ui.form.IzinFormViewModel
 import app.pantauizin.ui.izin.IzinListScreen
@@ -104,6 +107,27 @@ fun AppNav(
             )
             return
         }
+    }
+
+    var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
+    val activeUid = if (container != null) container.authManager.currentUser.collectAsState().value?.uid else null
+
+    LaunchedEffect(activeUid) {
+        if (container != null && activeUid != null) {
+            container.updateManager.checkForUpdate().onSuccess { info ->
+                if (info != null) {
+                    availableUpdate = info
+                }
+            }
+        }
+    }
+
+    if (container != null && availableUpdate != null) {
+        UpdateDialog(
+            updateInfo = availableUpdate!!,
+            updateManager = container.updateManager,
+            onDismiss = { availableUpdate = null }
+        )
     }
 
     if (container != null && (showAddIzin || editIzinId != null)) {
@@ -329,6 +353,7 @@ fun AppNav(
                             settings = container.settingsStore,
                             authManager = container.authManager,
                             syncManager = container.syncManager,
+                            updateManager = container.updateManager,
                             onTesNotifikasi = { container.sweepRunner.tesNotifikasi() },
                             onTesAlarm = { container.sweepRunner.scheduleTestAlarm() },
                             onReschedule = { container.sweepRunner.rescheduleOnly() }

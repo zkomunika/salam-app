@@ -3,6 +3,8 @@ package app.pantauizin.ui.pengaturan
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.pantauizin.data.SettingsStore
+import app.pantauizin.data.firebase.AppUpdateInfo
+import app.pantauizin.data.firebase.AppUpdateManager
 import app.pantauizin.data.firebase.FirebaseAuthManager
 import app.pantauizin.data.firebase.FirestoreSyncManager
 import app.pantauizin.data.firebase.UserProfile
@@ -34,13 +36,18 @@ data class PengaturanUiState(
     val migrationProgress: String? = null,
     val migrationResult: String? = null,
     val isSyncing: Boolean = false,
-    val syncResult: String? = null
+    val syncResult: String? = null,
+    val isCheckingUpdate: Boolean = false,
+    val updateCheckMessage: String? = null,
+    val foundUpdate: AppUpdateInfo? = null,
+    val isPublishingUpdate: Boolean = false
 )
 
 class PengaturanViewModel(
     private val settings: SettingsStore,
     private val authManager: FirebaseAuthManager? = null,
     private val syncManager: FirestoreSyncManager? = null,
+    val updateManager: AppUpdateManager? = null,
     private val onTesNotifikasi: () -> Unit = {},
     private val onTesAlarm: () -> LocalDateTime? = { null },
     private val onReschedule: suspend () -> Unit
@@ -95,6 +102,79 @@ class PengaturanViewModel(
 
     fun logout() {
         authManager?.signOut()
+    }
+
+    fun cekPembaruan() {
+        val um = updateManager ?: return
+        _uiState.update { it.copy(isCheckingUpdate = true, updateCheckMessage = null) }
+        viewModelScope.launch {
+            val res = um.checkForUpdate()
+            res.fold(
+                onSuccess = { info ->
+                    _uiState.update {
+                        it.copy(
+                            isCheckingUpdate = false,
+                            foundUpdate = info,
+                            updateCheckMessage = if (info == null) {
+                                "Aplikasi sudah versi terbaru (v${um.currentVersionName})"
+                            } else null
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isCheckingUpdate = false,
+                            updateCheckMessage = "Gagal memeriksa pembaruan: ${err.message}"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun tutupDialogUpdate() {
+        _uiState.update { it.copy(foundUpdate = null) }
+    }
+
+    fun publikasikanUpdate(
+        versionCode: Int,
+        versionName: String,
+        apkUrl: String,
+        releaseNotes: String,
+        forceUpdate: Boolean
+    ) {
+        val um = updateManager ?: return
+        _uiState.update { it.copy(isPublishingUpdate = true, updateCheckMessage = null) }
+        viewModelScope.launch {
+            val res = um.publishUpdateInfo(
+                AppUpdateInfo(
+                    latestVersionCode = versionCode,
+                    latestVersionName = versionName,
+                    apkUrl = apkUrl,
+                    releaseNotes = releaseNotes,
+                    forceUpdate = forceUpdate
+                )
+            )
+            res.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isPublishingUpdate = false,
+                            updateCheckMessage = "Info pembaruan v$versionName berhasil dipublikasikan!"
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isPublishingUpdate = false,
+                            updateCheckMessage = "Gagal mempublikasikan update: ${err.message}"
+                        )
+                    }
+                }
+            )
+        }
     }
 
     fun sinkronkanSekarang() {

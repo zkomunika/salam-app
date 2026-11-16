@@ -23,6 +23,9 @@ class AppContainer(context: Context) {
     val authManager: app.pantauizin.data.firebase.FirebaseAuthManager by lazy {
         app.pantauizin.data.firebase.FirebaseAuthManager(context = appContext)
     }
+    val updateManager: app.pantauizin.data.firebase.AppUpdateManager by lazy {
+        app.pantauizin.data.firebase.AppUpdateManager(context = appContext)
+    }
     val syncManager: app.pantauizin.data.firebase.FirestoreSyncManager by lazy {
         app.pantauizin.data.firebase.FirestoreSyncManager(
             context = appContext,
