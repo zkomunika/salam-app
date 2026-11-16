@@ -8,4 +8,7 @@ local.properties
 .agents/
 skills-lock.json
 build.log
+*.apk
+.kotlin/
+
 

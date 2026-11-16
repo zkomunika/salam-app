@@ -61,6 +61,8 @@ import app.pantauizin.data.firebase.UserProfile
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
+    updateInfo: app.pantauizin.data.firebase.AppUpdateInfo? = null,
+    onUpdateClick: () -> Unit = {},
     onLoginSuccess: (UserProfile) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -136,7 +138,7 @@ fun LoginScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "Masuk Pengurus",
+                            text = "Portal Masuk",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -283,15 +285,32 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Text(
-                    text = "Mode Multi-Pengurus (10-20 Pengurus)\nData tersinkron otomatis antar HP pengurus via Cloud Firestore.",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
-                    ),
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Text(
+                        text = "Versi ${app.pantauizin.BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    if (updateInfo != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = onUpdateClick
+                        ) {
+                            Text(
+                                text = "🚀 Pembaruan v${updateInfo.latestVersionName} tersedia! Ketuk di sini",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }

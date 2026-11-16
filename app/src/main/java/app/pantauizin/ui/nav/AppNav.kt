@@ -83,6 +83,18 @@ fun AppNav(
     var konfirmasiIzinId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showDataSantri by rememberSaveable { mutableStateOf(false) }
 
+    var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
+
+    LaunchedEffect(Unit) {
+        if (container != null) {
+            container.updateManager.checkForUpdate().onSuccess { info ->
+                if (info != null) {
+                    availableUpdate = info
+                }
+            }
+        }
+    }
+
     if (container != null) {
         val currentUser by container.authManager.currentUser.collectAsState()
         val isAuthLoading by container.authManager.isLoading.collectAsState()
@@ -103,22 +115,19 @@ fun AppNav(
             }
             app.pantauizin.ui.auth.LoginScreen(
                 viewModel = loginVm,
+                updateInfo = availableUpdate,
+                onUpdateClick = { /* dialog rendered below if availableUpdate != null */ },
                 onLoginSuccess = { }
             )
-            return
-        }
-    }
 
-    var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
-    val activeUid = if (container != null) container.authManager.currentUser.collectAsState().value?.uid else null
-
-    LaunchedEffect(activeUid) {
-        if (container != null && activeUid != null) {
-            container.updateManager.checkForUpdate().onSuccess { info ->
-                if (info != null) {
-                    availableUpdate = info
-                }
+            if (availableUpdate != null) {
+                UpdateDialog(
+                    updateInfo = availableUpdate!!,
+                    updateManager = container.updateManager,
+                    onDismiss = { availableUpdate = null }
+                )
             }
+            return
         }
     }
 
