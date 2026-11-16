@@ -105,7 +105,8 @@ class FirebaseAuthManager(
     private fun createDefaultProfile(uid: String, email: String?): UserProfile {
         val safeEmail = email ?: ""
         // Auto-assign admin if owner email or starts with admin
-        val role = if (safeEmail.equals("mzakyalmubarok9.4@gmail.com", ignoreCase = true) ||
+        val role = if (safeEmail.equals("mzakyalmubarok@asas.id", ignoreCase = true) ||
+            safeEmail.equals("mzakyalmubarok9.4@gmail.com", ignoreCase = true) ||
             safeEmail.startsWith("admin", ignoreCase = true)
         ) {
             UserRole.ADMIN.name

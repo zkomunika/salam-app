@@ -136,17 +136,14 @@ fun LoginScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = if (state.isRegisterMode) "Daftar Akun Baru" else "Masuk Pengurus",
+                            text = "Masuk Pengurus",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
 
                         Text(
-                            text = if (state.isRegisterMode)
-                                "Buat akun pengurus atau admin (minimal 6 karakter sandi)."
-                            else
-                                "Gunakan akun yang telah didaftarkan untuk masuk.",
+                            text = "Gunakan akun yang telah didaftarkan oleh Admin untuk masuk.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -261,7 +258,7 @@ fun LoginScreen(
                                 )
                             } else {
                                 Text(
-                                    text = if (state.isRegisterMode) "Daftar & Masuk" else "Masuk",
+                                    text = "Masuk",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimary
@@ -270,22 +267,17 @@ fun LoginScreen(
                             }
                         }
 
-                        // Toggle Mode Button
-                        TextButton(
-                            onClick = viewModel::toggleMode,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = if (state.isRegisterMode)
-                                    "Sudah punya akun? Masuk di sini"
-                                else
-                                    "Belum punya akun / Buat akun baru? Klik di sini",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        }
+                        // Catatan bahwa pendaftaran akun dikelola oleh Admin
+                        Text(
+                            text = "Akun pengurus dikelola oleh Admin Asrama.\nHubungi Admin jika belum memiliki akses.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                textAlign = TextAlign.Center
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                        )
                     }
                 }
 
