@@ -552,11 +552,22 @@ fun PengaturanScreen(
     }
 
     if (showPublishUpdateDialog && viewModel.updateManager != null) {
-        var verCodeStr by remember { mutableStateOf((viewModel.updateManager.currentVersionCode + 1).toString()) }
-        var verNameStr by remember { mutableStateOf("") }
+        val nextCode = (viewModel.updateManager.currentVersionCode + 1).toString()
+        val nextName = viewModel.updateManager.suggestNextVersionName()
+        var verCodeStr by remember { mutableStateOf(nextCode) }
+        var verNameStr by remember { mutableStateOf(nextName) }
         var apkUrlStr by remember { mutableStateOf("") }
-        var notesStr by remember { mutableStateOf("") }
+        var notesStr by remember { mutableStateOf("Pembaruan sistem, peningkatan kestabilan, dan perbaikan antarmuka.") }
         var forceChecked by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            val last = viewModel.updateManager.getLatestConfig()
+            if (last != null) {
+                if (last.apkUrl.isNotBlank() && apkUrlStr.isBlank()) {
+                    apkUrlStr = last.apkUrl
+                }
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { showPublishUpdateDialog = false },

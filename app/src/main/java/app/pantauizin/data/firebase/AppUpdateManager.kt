@@ -44,6 +44,37 @@ class AppUpdateManager(
     val currentVersionCode: Int get() = BuildConfig.VERSION_CODE
     val currentVersionName: String get() = BuildConfig.VERSION_NAME
 
+    fun suggestNextVersionName(): String {
+        val parts = currentVersionName.split(".")
+        return if (parts.size >= 2) {
+            val major = parts[0]
+            val minor = parts[1].toIntOrNull() ?: 0
+            "$major.${minor + 1}"
+        } else {
+            "${currentVersionName}.1"
+        }
+    }
+
+    /**
+     * Mengambil konfigurasi update terakhir yang tersimpan di Firestore untuk auto-fill form rilis.
+     */
+    suspend fun getLatestConfig(): AppUpdateInfo? = withContext(Dispatchers.IO) {
+        val db = firestore ?: return@withContext null
+        try {
+            val snap = db.collection("app_config").document("update").get().await()
+            if (!snap.exists()) return@withContext null
+            AppUpdateInfo(
+                latestVersionCode = (snap.getLong("latestVersionCode") ?: 0L).toInt(),
+                latestVersionName = snap.getString("latestVersionName") ?: "",
+                apkUrl = snap.getString("apkUrl") ?: "",
+                releaseNotes = snap.getString("releaseNotes") ?: "",
+                forceUpdate = snap.getBoolean("forceUpdate") ?: false
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /**
      * Mengecek apakah ada versi baru di Firestore (`app_config/update`).
      * Mengembalikan AppUpdateInfo jika ada versi lebih baru, atau null jika sudah terbaru.
