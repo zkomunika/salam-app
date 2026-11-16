@@ -15,39 +15,53 @@ import app.pantauizin.ui.theme.StatusColors
 data class StatusStyle(
     val label: String,
     val icon: ImageVector,
-    val color: Color
+    val color: Color,
+    val contentColor: Color = color,
+    val containerColor: Color = color.copy(alpha = 0.14f)
 )
 
 fun styleOf(s: IzinStatus): StatusStyle = when (s) {
     IzinStatus.IZIN_BERJALAN -> StatusStyle(
         label = "Izin berjalan",
         icon = Icons.Default.Schedule,
-        color = StatusColors.Biru
+        color = StatusColors.Biru,
+        contentColor = StatusColors.BiruText,
+        containerColor = StatusColors.BiruContainer
     )
     IzinStatus.TERLAMBAT_BELUM_KONFIRMASI -> StatusStyle(
         label = "Terlambat - belum konfirmasi",
         icon = Icons.Default.Warning,
-        color = StatusColors.Merah
+        color = StatusColors.Merah,
+        contentColor = StatusColors.MerahText,
+        containerColor = StatusColors.MerahContainer
     )
     IzinStatus.TERLAMBAT_TERKONFIRMASI -> StatusStyle(
         label = "Terlambat - terkonfirmasi",
         icon = Icons.Default.Info,
-        color = StatusColors.Amber
+        color = StatusColors.Amber,
+        contentColor = StatusColors.AmberText,
+        containerColor = StatusColors.AmberContainer
     )
     IzinStatus.TERLAMBAT_KONFIRMASI_HABIS -> StatusStyle(
         label = "Terlambat - konfirmasi habis",
         icon = Icons.Default.Error,
-        color = StatusColors.Merah
+        color = StatusColors.Merah,
+        contentColor = StatusColors.MerahText,
+        containerColor = StatusColors.MerahContainer
     )
     IzinStatus.KEMBALI_TEPAT -> StatusStyle(
         label = "Kembali tepat waktu",
         icon = Icons.Default.CheckCircle,
-        color = StatusColors.Hijau
+        color = StatusColors.Hijau,
+        contentColor = StatusColors.HijauText,
+        containerColor = StatusColors.HijauContainer
     )
     IzinStatus.KEMBALI_TERLAMBAT -> StatusStyle(
         label = "Kembali terlambat",
         icon = Icons.Default.History,
-        color = StatusColors.Hijau
+        color = StatusColors.Hijau,
+        contentColor = StatusColors.HijauText,
+        containerColor = StatusColors.HijauContainer
     )
 }
 

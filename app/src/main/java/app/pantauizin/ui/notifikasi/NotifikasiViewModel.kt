@@ -46,5 +46,9 @@ class NotifikasiViewModel(
     suspend fun tandaiDibaca(id: Long) {
         notifRepo.markRead(id)
     }
+
+    suspend fun tandaiSemuaDibaca() {
+        notifRepo.markAllRead()
+    }
 }
 

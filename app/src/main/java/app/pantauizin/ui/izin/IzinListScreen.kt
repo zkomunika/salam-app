@@ -1,6 +1,8 @@
 package app.pantauizin.ui.izin
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,9 +11,11 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,8 +23,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,8 +39,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,12 +56,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.IzinFilter
 import app.pantauizin.domain.IzinStatus
+import app.pantauizin.ui.components.EmptyStateBox
+import app.pantauizin.ui.components.StatusBadge
 import app.pantauizin.ui.konfirmasi.KonfirmasiRiwayatDialog
 import app.pantauizin.ui.theme.StatusColors
 import kotlinx.coroutines.launch
@@ -61,7 +72,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val ID_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("id-ID"))
+private val ID_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("id-ID"))
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -73,6 +84,8 @@ fun IzinListScreen(
     modifier: Modifier = Modifier
 ) {
     val currentFilter by viewModel.filter.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val filterCounts by viewModel.filterCounts.collectAsState()
     val items by viewModel.items.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -82,6 +95,8 @@ fun IzinListScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddIzin,
@@ -98,6 +113,25 @@ fun IzinListScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.ubahSearchQuery(it) },
+                placeholder = { Text("Cari nama, kamar, atau alasan...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.ubahSearchQuery("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Hapus pencarian")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -109,10 +143,11 @@ fun IzinListScreen(
                     IzinFilter.KEMBALI to "Sudah kembali"
                 )
                 for ((f, label) in filterLabels) {
+                    val count = filterCounts[f] ?: 0
                     FilterChip(
                         selected = currentFilter == f,
                         onClick = { viewModel.pilihFilter(f) },
-                        label = { Text(label) }
+                        label = { Text("$label ($count)") }
                     )
                 }
             }
@@ -120,21 +155,30 @@ fun IzinListScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (items.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Belum ada data izin pada kategori ini.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                val hasActiveFilter = searchQuery.isNotBlank() || currentFilter != IzinFilter.SEMUA
+                EmptyStateBox(
+                    icon = Icons.AutoMirrored.Filled.Assignment,
+                    title = if (hasActiveFilter) "Tidak ada izin yang cocok" else "Belum ada data izin",
+                    subtitle = if (hasActiveFilter) {
+                        "Coba ubah kata kunci pencarian atau pilih kategori lain."
+                    } else {
+                        "Ketuk tombol + di kanan bawah untuk mencatat izin pulang santri."
+                    },
+                    actionLabel = if (hasActiveFilter) "Reset Filter" else "Tambah Izin",
+                    onAction = if (hasActiveFilter) {
+                        {
+                            viewModel.ubahSearchQuery("")
+                            viewModel.pilihFilter(IzinFilter.SEMUA)
+                        }
+                    } else {
+                        onAddIzin
+                    }
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
                     items(items, key = { it.view.id }) { item ->
                         IzinCard(
@@ -224,6 +268,7 @@ fun IzinListScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IzinCard(
     item: IzinListItemUi,
@@ -238,7 +283,9 @@ private fun IzinCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -249,8 +296,7 @@ private fun IzinCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.view.nama,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Text(
                         text = "Kamar ${item.view.kamar}",
@@ -260,11 +306,12 @@ private fun IzinCard(
                 }
                 OutlinedButton(
                     onClick = onEdit,
+                    modifier = Modifier.heightIn(min = 44.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit",
+                        contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -279,67 +326,52 @@ private fun IzinCard(
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "Batas aktif: ${item.batasAktif.format(ID_DATE_FORMAT)}",
-                style = MaterialTheme.typography.bodyMedium
+                text = "Pulang: ${item.view.tanggalPulang.format(ID_DATE_FORMAT)}  •  Batas: ${item.batasAktif.format(ID_DATE_FORMAT)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .background(
-                            color = style.color.copy(alpha = 0.14f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = style.icon,
-                        contentDescription = style.label,
-                        tint = style.color,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = style.label,
-                        color = style.color,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                StatusBadge(style = style)
 
                 if (item.status == IzinStatus.KEMBALI_TERLAMBAT) {
                     Box(
                         modifier = Modifier
                             .background(
-                                color = StatusColors.Oranye,
+                                color = StatusColors.AmberContainer,
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = "Terlambat ${item.hariTerlambat} hari",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelMedium,
+                            color = StatusColors.AmberText,
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clickable(onClick = onToggleKembali)
+                        .padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(
                         checked = item.view.tanggalKembali != null,
                         onCheckedChange = { onToggleKembali() }
@@ -351,21 +383,26 @@ private fun IzinCard(
                 }
 
                 if (item.tampilKotakKonfirmasi) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = item.sudahKonfirmasi,
-                            onCheckedChange = { onOpenKonfirmasi() }
+                    OutlinedButton(
+                        onClick = onOpenKonfirmasi,
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EventAvailable,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
                         )
-                        Text(
-                            text = "Konfirmasi wali",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (item.sudahKonfirmasi) "Tambah konfirmasi" else "Konfirmasi wali")
                     }
                 }
             }
 
             if (item.view.konfirmasi.isNotEmpty()) {
-                TextButton(onClick = onLihatKonfirmasi) {
+                TextButton(
+                    onClick = onLihatKonfirmasi,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
                     Text("Lihat konfirmasi (${item.view.konfirmasi.size})")
                 }
             }

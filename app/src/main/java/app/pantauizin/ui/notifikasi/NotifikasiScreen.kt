@@ -1,5 +1,6 @@
 package app.pantauizin.ui.notifikasi
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,6 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.pantauizin.data.NotifikasiView
 import app.pantauizin.domain.NotifRange
+import app.pantauizin.ui.components.EmptyStateBox
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -118,17 +123,33 @@ fun NotifikasiScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (items.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+        val unreadCount = remember(items) { items.count { !it.dibaca } }
+        if (unreadCount > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Belum ada riwayat notifikasi pada rentang waktu ini.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = "$unreadCount belum dibaca",
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                TextButton(
+                    onClick = { scope.launch { viewModel.tandaiSemuaDibaca() } },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
+                    Text("Tandai semua dibaca")
+                }
             }
+        }
+
+        if (items.isEmpty()) {
+            EmptyStateBox(
+                icon = Icons.Default.NotificationsNone,
+                title = "Belum Ada Notifikasi",
+                subtitle = "Belum ada riwayat notifikasi pada rentang waktu ini."
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -274,6 +295,8 @@ private fun NotifikasiItemCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (!item.dibaca) {
                 MaterialTheme.colorScheme.secondaryContainer

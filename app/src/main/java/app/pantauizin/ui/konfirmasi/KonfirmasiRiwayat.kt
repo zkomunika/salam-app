@@ -7,20 +7,21 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
@@ -39,12 +40,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import app.pantauizin.data.KonfirmasiView
@@ -72,7 +76,12 @@ fun KonfirmasiRiwayatSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
                         shape = RoundedCornerShape(12.dp)
                     )
                     .padding(12.dp)
@@ -204,25 +213,62 @@ fun BuktiViewerDialog(path: String, onDismiss: () -> Unit) {
 @Composable
 private fun ZoomableImage(bitmap: Bitmap) {
     var scale by remember { mutableFloatStateOf(1f) }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 420.dp),
-        contentAlignment = Alignment.Center
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = "Bukti konfirmasi",
-            contentScale = ContentScale.Fit,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = 420.dp)
+                .clipToBounds()
+                .onSizeChanged { viewportSize = it }
                 .pointerInput(Unit) {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(1f, 5f)
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val nextScale = (scale * zoom).coerceIn(1f, 5f)
+                        scale = nextScale
+                        if (nextScale <= 1f) {
+                            offsetX = 0f
+                            offsetY = 0f
+                        } else {
+                            val maxX = (viewportSize.width * (nextScale - 1f)) / 2f
+                            val maxY = (viewportSize.height * (nextScale - 1f)) / 2f
+                            offsetX = (offsetX + pan.x).coerceIn(-maxX, maxX)
+                            offsetY = (offsetY + pan.y).coerceIn(-maxY, maxY)
+                        }
                     }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Bukti konfirmasi",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+            )
+        }
+        if (scale > 1.01f) {
+            TextButton(
+                onClick = {
+                    scale = 1f
+                    offsetX = 0f
+                    offsetY = 0f
                 }
-                .graphicsLayer(scaleX = scale, scaleY = scale)
-        )
+            ) {
+                Text("Reset Zoom")
+            }
+        }
     }
 }
 

@@ -10,6 +10,7 @@ class ThemeTest {
     fun lightSchemePrimaryAdalahMerahMarunIdentitas() {
         assertEquals(Color(0xFF551F20), LightColorScheme.primary)
         assertEquals(Color.White, LightColorScheme.onPrimary)
+        assertNotEquals(LightColorScheme.background, LightColorScheme.surface)
     }
 
     @Test

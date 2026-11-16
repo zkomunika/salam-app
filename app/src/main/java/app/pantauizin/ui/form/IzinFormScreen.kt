@@ -1,5 +1,6 @@
 package app.pantauizin.ui.form
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,10 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -38,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +56,7 @@ import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
 import app.pantauizin.domain.FormField
 import app.pantauizin.domain.MessageTemplateBuilder
+import app.pantauizin.ui.components.DatePickerField
 import app.pantauizin.ui.theme.StatusColors
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -82,9 +85,14 @@ fun IzinFormScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(if (state.isEditMode) "Ubah Izin Pulang" else "Tambah Izin Pulang") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 navigationIcon = {
                     IconButton(onClick = onDone) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -96,7 +104,7 @@ fun IzinFormScreen(
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Hapus izin",
-                                tint = StatusColors.Merah
+                                tint = StatusColors.MerahText
                             )
                         }
                     }
@@ -110,280 +118,99 @@ fun IzinFormScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Dropdown Kamar
-            ExposedDropdownMenuBox(
-                expanded = kamarExpanded,
-                onExpandedChange = { kamarExpanded = !kamarExpanded }
-            ) {
-                OutlinedTextField(
-                    value = state.selectedKamar?.let { "Kamar $it" } ?: "Semua kamar",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Kamar") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kamarExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
+            // 1. Data Santri & Alasan
+            FormSectionCard(title = "1. Data Santri & Alasan") {
+                ExposedDropdownMenuBox(
                     expanded = kamarExpanded,
-                    onDismissRequest = { kamarExpanded = false }
+                    onExpandedChange = { kamarExpanded = !kamarExpanded }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Semua kamar") },
-                        onClick = {
-                            viewModel.pilihKamar(null)
-                            kamarExpanded = false
-                        }
+                    OutlinedTextField(
+                        value = state.selectedKamar?.let { "Kamar $it" } ?: "Semua kamar",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Kamar") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kamarExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
-                    state.kamarOptions.forEach { kamar ->
+                    ExposedDropdownMenu(
+                        expanded = kamarExpanded,
+                        onDismissRequest = { kamarExpanded = false }
+                    ) {
                         DropdownMenuItem(
-                            text = { Text("Kamar $kamar") },
+                            text = { Text("Semua kamar") },
                             onClick = {
-                                viewModel.pilihKamar(kamar)
+                                viewModel.pilihKamar(null)
                                 kamarExpanded = false
                             }
                         )
-                    }
-                }
-            }
-
-            // Nama santri + daftar saran
-            OutlinedTextField(
-                value = state.namaQuery,
-                onValueChange = { viewModel.ubahNamaQuery(it) },
-                label = { Text("Nama santri") },
-                isError = state.errors.containsKey(FormField.SANTRI),
-                supportingText = {
-                    state.errors[FormField.SANTRI]?.let { Text(it) }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (state.form.santriId == null && state.saranSantri.isNotEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                        state.saranSantri.take(8).forEach { santri ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 48.dp)
-                                    .clickable { viewModel.pilihSantri(santri.id) }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(santri.nama, style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    "Kamar ${santri.kamar}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Peringatan izin aktif
-            state.activeIzinIdWarning?.let { activeId ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = StatusColors.Merah.copy(alpha = 0.12f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = StatusColors.Merah
-                            )
-                            Text(
-                                "Santri ini masih tercatat izin dan belum kembali",
-                                color = StatusColors.Merah,
-                                style = MaterialTheme.typography.bodyMedium
+                        state.kamarOptions.forEach { kamar ->
+                            DropdownMenuItem(
+                                text = { Text("Kamar $kamar") },
+                                onClick = {
+                                    viewModel.pilihKamar(kamar)
+                                    kamarExpanded = false
+                                }
                             )
                         }
-                        OutlinedButton(onClick = { onOpenActiveIzin(activeId) }) {
-                            Text("Buka izin tersebut")
-                        }
                     }
                 }
-            }
 
-            // Tanggal pulang
-            OutlinedTextField(
-                value = MessageTemplateBuilder.formatTanggal(state.form.tanggalPulang),
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Tanggal pulang") },
-                trailingIcon = {
-                    IconButton(onClick = { showPulangDatePicker = true }) {
-                        Icon(Icons.Default.DateRange, contentDescription = "Pilih tanggal pulang")
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showPulangDatePicker = true }
-            )
-
-            // Alasan jenis
-            ExposedDropdownMenuBox(
-                expanded = alasanExpanded,
-                onExpandedChange = { alasanExpanded = !alasanExpanded }
-            ) {
-                val labelAlasan = when (state.form.alasanJenis) {
-                    AlasanJenis.SAKIT -> "Sakit"
-                    AlasanJenis.LAIN_LAIN -> "Lain-lain"
-                    null -> ""
-                }
                 OutlinedTextField(
-                    value = labelAlasan,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Alasan") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = alasanExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = alasanExpanded,
-                    onDismissRequest = { alasanExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Sakit") },
-                        onClick = {
-                            viewModel.ubahAlasanJenis(AlasanJenis.SAKIT)
-                            alasanExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Lain-lain") },
-                        onClick = {
-                            viewModel.ubahAlasanJenis(AlasanJenis.LAIN_LAIN)
-                            alasanExpanded = false
-                        }
-                    )
-                }
-            }
-
-            // Detail alasan
-            val detailLabel = if (state.form.alasanJenis == AlasanJenis.SAKIT) {
-                "Nama penyakit"
-            } else {
-                "Keperluan pulang"
-            }
-            OutlinedTextField(
-                value = state.form.alasanDetail,
-                onValueChange = { viewModel.ubahAlasanDetail(it) },
-                label = { Text(detailLabel) },
-                isError = state.errors.containsKey(FormField.ALASAN_DETAIL),
-                supportingText = {
-                    state.errors[FormField.ALASAN_DETAIL]?.let { Text(it) }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Batas waktu
-            ExposedDropdownMenuBox(
-                expanded = batasExpanded,
-                onExpandedChange = { batasExpanded = !batasExpanded }
-            ) {
-                val labelBatas = when (state.form.batasJenis) {
-                    BatasJenis.HARI_1 -> "1 hari"
-                    BatasJenis.HARI_2 -> "2 hari"
-                    BatasJenis.HARI_3 -> "3 hari"
-                    BatasJenis.LEBIH_3_HARI -> ">3 hari"
-                    null -> ""
-                }
-                OutlinedTextField(
-                    value = labelBatas,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Batas waktu") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = batasExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = batasExpanded,
-                    onDismissRequest = { batasExpanded = false }
-                ) {
-                    listOf(
-                        BatasJenis.HARI_1 to "1 hari",
-                        BatasJenis.HARI_2 to "2 hari",
-                        BatasJenis.HARI_3 to "3 hari",
-                        BatasJenis.LEBIH_3_HARI to ">3 hari"
-                    ).forEach { (jenis, label) ->
-                        DropdownMenuItem(
-                            text = { Text(label) },
-                            onClick = {
-                                viewModel.ubahBatasJenis(jenis)
-                                batasExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (state.form.batasJenis == BatasJenis.LEBIH_3_HARI) {
-                OutlinedTextField(
-                    value = state.form.tanggalBatasPilihan?.let(MessageTemplateBuilder::formatTanggal) ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Tanggal kembali") },
-                    isError = state.errors.containsKey(FormField.BATAS_TANGGAL),
+                    value = state.namaQuery,
+                    onValueChange = { viewModel.ubahNamaQuery(it) },
+                    label = { Text("Nama santri") },
+                    isError = state.errors.containsKey(FormField.SANTRI),
                     supportingText = {
-                        state.errors[FormField.BATAS_TANGGAL]?.let { Text(it) }
+                        state.errors[FormField.SANTRI]?.let { Text(it) }
                     },
-                    trailingIcon = {
-                        IconButton(onClick = { showBatasDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, contentDescription = "Pilih tanggal kembali")
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showBatasDatePicker = true }
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
 
-            // Pratinjau batas kembali
-            state.preview?.let { prev ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (prev.hariLewat > 0) {
-                            StatusColors.Merah.copy(alpha = 0.12f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            "Batas kembali: ${MessageTemplateBuilder.formatTanggal(prev.batasAwal)}",
-                            style = MaterialTheme.typography.bodyLarge
+                if (state.form.santriId == null && state.saranSantri.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
-                        if (prev.hariLewat > 0) {
+                    ) {
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            state.saranSantri.take(8).forEach { santri ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 48.dp)
+                                        .clickable { viewModel.pilihSantri(santri.id) }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(santri.nama, style = MaterialTheme.typography.bodyLarge)
+                                    Text(
+                                        "Kamar ${santri.kamar}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                state.activeIzinIdWarning?.let { activeId ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = StatusColors.MerahContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -391,32 +218,202 @@ fun IzinFormScreen(
                                 Icon(
                                     Icons.Default.Warning,
                                     contentDescription = null,
-                                    tint = StatusColors.Merah
+                                    tint = StatusColors.MerahText
                                 )
                                 Text(
-                                    "Sudah lewat ${prev.hariLewat} hari, santri akan langsung tercatat terlambat",
-                                    color = StatusColors.Merah,
+                                    "Santri ini masih tercatat izin dan belum kembali",
+                                    color = StatusColors.MerahText,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
+                            }
+                            OutlinedButton(
+                                onClick = { onOpenActiveIzin(activeId) },
+                                modifier = Modifier.heightIn(min = 48.dp)
+                            ) {
+                                Text("Buka izin tersebut")
+                            }
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = alasanExpanded,
+                    onExpandedChange = { alasanExpanded = !alasanExpanded }
+                ) {
+                    val labelAlasan = when (state.form.alasanJenis) {
+                        AlasanJenis.SAKIT -> "Sakit"
+                        AlasanJenis.LAIN_LAIN -> "Lain-lain"
+                        null -> ""
+                    }
+                    OutlinedTextField(
+                        value = labelAlasan,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Alasan") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = alasanExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = alasanExpanded,
+                        onDismissRequest = { alasanExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Sakit") },
+                            onClick = {
+                                viewModel.ubahAlasanJenis(AlasanJenis.SAKIT)
+                                alasanExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Lain-lain") },
+                            onClick = {
+                                viewModel.ubahAlasanJenis(AlasanJenis.LAIN_LAIN)
+                                alasanExpanded = false
+                            }
+                        )
+                    }
+                }
+
+                val detailLabel = if (state.form.alasanJenis == AlasanJenis.SAKIT) {
+                    "Nama penyakit"
+                } else {
+                    "Keperluan pulang"
+                }
+                OutlinedTextField(
+                    value = state.form.alasanDetail,
+                    onValueChange = { viewModel.ubahAlasanDetail(it) },
+                    label = { Text(detailLabel) },
+                    isError = state.errors.containsKey(FormField.ALASAN_DETAIL),
+                    supportingText = {
+                        state.errors[FormField.ALASAN_DETAIL]?.let { Text(it) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // 2. Jadwal & Batas Kembali
+            FormSectionCard(title = "2. Jadwal & Batas Kembali") {
+                DatePickerField(
+                    value = MessageTemplateBuilder.formatTanggal(state.form.tanggalPulang),
+                    label = "Tanggal pulang",
+                    contentDescription = "Pilih tanggal pulang",
+                    onClick = { showPulangDatePicker = true }
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = batasExpanded,
+                    onExpandedChange = { batasExpanded = !batasExpanded }
+                ) {
+                    val labelBatas = when (state.form.batasJenis) {
+                        BatasJenis.HARI_1 -> "1 hari"
+                        BatasJenis.HARI_2 -> "2 hari"
+                        BatasJenis.HARI_3 -> "3 hari"
+                        BatasJenis.LEBIH_3_HARI -> ">3 hari"
+                        null -> ""
+                    }
+                    OutlinedTextField(
+                        value = labelBatas,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Batas waktu") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = batasExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = batasExpanded,
+                        onDismissRequest = { batasExpanded = false }
+                    ) {
+                        listOf(
+                            BatasJenis.HARI_1 to "1 hari",
+                            BatasJenis.HARI_2 to "2 hari",
+                            BatasJenis.HARI_3 to "3 hari",
+                            BatasJenis.LEBIH_3_HARI to ">3 hari"
+                        ).forEach { (jenis, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    viewModel.ubahBatasJenis(jenis)
+                                    batasExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (state.form.batasJenis == BatasJenis.LEBIH_3_HARI) {
+                    DatePickerField(
+                        value = state.form.tanggalBatasPilihan?.let(MessageTemplateBuilder::formatTanggal) ?: "",
+                        label = "Tanggal kembali",
+                        contentDescription = "Pilih tanggal kembali",
+                        isError = state.errors.containsKey(FormField.BATAS_TANGGAL),
+                        errorText = state.errors[FormField.BATAS_TANGGAL],
+                        onClick = { showBatasDatePicker = true }
+                    )
+                }
+
+                state.preview?.let { prev ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (prev.hariLewat > 0) {
+                                StatusColors.MerahContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                "Batas kembali: ${MessageTemplateBuilder.formatTanggal(prev.batasAwal)}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = if (prev.hariLewat > 0) {
+                                    StatusColors.MerahText
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                            if (prev.hariLewat > 0) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = StatusColors.MerahText
+                                    )
+                                    Text(
+                                        "Sudah lewat ${prev.hariLewat} hari, santri akan langsung tercatat terlambat",
+                                        color = StatusColors.MerahText,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Nomor WA wali
-            OutlinedTextField(
-                value = state.form.noWa,
-                onValueChange = { viewModel.ubahNoWa(it) },
-                label = { Text("Nomor WA wali (opsional)") },
-                isError = state.errors.containsKey(FormField.NO_WA),
-                supportingText = {
-                    state.errors[FormField.NO_WA]?.let { Text(it) }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
+            // 3. Kontak Wali
+            FormSectionCard(title = "3. Kontak Wali") {
+                OutlinedTextField(
+                    value = state.form.noWa,
+                    onValueChange = { viewModel.ubahNoWa(it) },
+                    label = { Text("Nomor WA wali (opsional)") },
+                    isError = state.errors.containsKey(FormField.NO_WA),
+                    supportingText = {
+                        state.errors[FormField.NO_WA]?.let { Text(it) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             Button(
                 onClick = {
@@ -437,7 +434,7 @@ fun IzinFormScreen(
             if (state.isEditMode) {
                 OutlinedButton(
                     onClick = { showDeleteConfirm = true },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusColors.Merah),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusColors.MerahText),
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
@@ -445,6 +442,8 @@ fun IzinFormScreen(
                     Text("Hapus Izin")
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 
@@ -486,7 +485,7 @@ fun IzinFormScreen(
                         }
                     }
                 ) {
-                    Text("Hapus", color = StatusColors.Merah)
+                    Text("Hapus", color = StatusColors.MerahText)
                 }
             },
             dismissButton = {
@@ -495,6 +494,32 @@ fun IzinFormScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun FormSectionCard(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            content()
+        }
     }
 }
 

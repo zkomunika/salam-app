@@ -2,6 +2,7 @@ package app.pantauizin.ui.terlambat
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material3.Button
@@ -47,7 +50,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,6 +57,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.pantauizin.ui.components.EmptyStateBox
+import app.pantauizin.ui.components.StatusBadge
 import app.pantauizin.ui.izin.styleOf
 import app.pantauizin.ui.konfirmasi.KonfirmasiRiwayatSection
 import app.pantauizin.ui.theme.StatusColors
@@ -65,7 +69,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val ID_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("id-ID"))
+private val ID_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("id-ID"))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,16 +149,12 @@ fun TerlambatScreen(
         }
 
         if (items.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Alhamdulillah, tidak ada santri yang terlambat saat ini.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            EmptyStateBox(
+                icon = Icons.Default.CheckCircle,
+                iconTint = StatusColors.Hijau,
+                title = "Semua Tepat Waktu",
+                subtitle = "Alhamdulillah, tidak ada santri yang terlambat saat ini."
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -215,11 +215,14 @@ private fun TerlambatCard(
     onTandaiKembali: () -> Unit
 ) {
     val style = styleOf(item.status)
+    val waLabel = item.view.noWaWali?.takeIf { it.isNotBlank() } ?: "Belum diisi (pilih kontak saat kirim)"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, style.color.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -230,8 +233,7 @@ private fun TerlambatCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.view.nama,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Text(
                         text = "Kamar ${item.view.kamar}",
@@ -242,55 +244,44 @@ private fun TerlambatCard(
                 Box(
                     modifier = Modifier
                         .background(
-                            color = StatusColors.Oranye,
+                            color = StatusColors.MerahContainer,
                             shape = RoundedCornerShape(8.dp)
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Text(
                         text = "Terlambat ${item.hariTerlambat} hari",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelMedium,
+                        color = StatusColors.MerahText,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier
-                    .background(
-                        color = style.color.copy(alpha = 0.14f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = style.icon,
-                    contentDescription = style.label,
-                    tint = style.color,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = style.label,
-                    color = style.color,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            StatusBadge(style = style)
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Batas awal: ${item.view.batasAwal.format(ID_DATE_FORMAT)}",
-                style = MaterialTheme.typography.bodySmall
+                text = "Batas awal: ${item.view.batasAwal.format(ID_DATE_FORMAT)}  •  Batas aktif: ${item.batasAktif.format(ID_DATE_FORMAT)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "WA Wali: $waLabel",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (item.view.noWaWali.isNullOrBlank()) {
+                    StatusColors.AmberText
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
 
             if (item.view.konfirmasi.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = "Riwayat konfirmasi wali:",
                     style = MaterialTheme.typography.labelLarge,
@@ -308,7 +299,10 @@ private fun TerlambatCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (item.view.tanggalKembali == null) {
-                    Button(onClick = onKirimTemplate) {
+                    Button(
+                        onClick = onKirimTemplate,
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = null,
@@ -319,7 +313,10 @@ private fun TerlambatCard(
                     }
                 }
 
-                OutlinedButton(onClick = onKonfirmasi) {
+                OutlinedButton(
+                    onClick = onKonfirmasi,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.EventAvailable,
                         contentDescription = null,
@@ -329,7 +326,10 @@ private fun TerlambatCard(
                     Text("Konfirmasi")
                 }
 
-                OutlinedButton(onClick = onTandaiKembali) {
+                OutlinedButton(
+                    onClick = onTandaiKembali,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,

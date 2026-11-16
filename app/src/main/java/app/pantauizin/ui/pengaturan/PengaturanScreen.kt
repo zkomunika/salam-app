@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,6 +112,7 @@ fun PengaturanScreen(
     val scope = rememberCoroutineScope()
 
     var showTimePicker by remember { mutableStateOf(false) }
+    var selectedTemplateTab by rememberSaveable { mutableStateOf(TemplateVariant.A) }
     var draftTemplateA by remember { mutableStateOf(state.templateA) }
     var draftTemplateB by remember { mutableStateOf(state.templateB) }
 
@@ -117,6 +122,9 @@ fun PengaturanScreen(
     LaunchedEffect(state.templateB) {
         draftTemplateB = state.templateB
     }
+
+    val cardBorder = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    val cardElevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
 
     Column(
         modifier = modifier
@@ -129,7 +137,9 @@ fun PengaturanScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = cardBorder,
+            elevation = cardElevation
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -148,7 +158,10 @@ fun PengaturanScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                OutlinedButton(onClick = { showTimePicker = true }) {
+                OutlinedButton(
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
                     Text("Ubah Jam (${state.jamPengingat.format(TIME_FORMAT)})")
                 }
             }
@@ -158,7 +171,9 @@ fun PengaturanScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = cardBorder,
+            elevation = cardElevation
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -206,7 +221,10 @@ fun PengaturanScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(onClick = { viewModel.tesNotifikasi() }) {
+                    Button(
+                        onClick = { viewModel.tesNotifikasi() },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
                         Text("Tes notifikasi")
                     }
                     OutlinedButton(
@@ -217,11 +235,15 @@ fun PengaturanScreen(
                                 "Alarm uji dipasang 10 detik lagi. Tutup app dari Recent sekarang.",
                                 Toast.LENGTH_LONG
                             ).show()
-                        }
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp)
                     ) {
                         Text("Tes alarm (10 dtk)")
                     }
-                    OutlinedButton(onClick = { bukaMulaiOtomatis(context) }) {
+                    OutlinedButton(
+                        onClick = { bukaMulaiOtomatis(context) },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
                         Text("Mulai Otomatis")
                     }
                 }
@@ -232,7 +254,9 @@ fun PengaturanScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = cardBorder,
+            elevation = cardElevation
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -251,17 +275,22 @@ fun PengaturanScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Button(onClick = onOpenDataSantri) {
+                Button(
+                    onClick = onOpenDataSantri,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
                     Text("Kelola Data Santri")
                 }
             }
         }
 
-        // 3. Template pesan A dan B
+        // 3. Template pesan A dan B (Tabbed)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = cardBorder,
+            elevation = cardElevation
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -278,85 +307,69 @@ fun PengaturanScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Text(
-                    text = "Varian A (Belum Dikonfirmasi)",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedTemplateTab == TemplateVariant.A,
+                        onClick = { selectedTemplateTab = TemplateVariant.A },
+                        label = { Text("Varian A (Belum Konfirmasi)") }
+                    )
+                    FilterChip(
+                        selected = selectedTemplateTab == TemplateVariant.B,
+                        onClick = { selectedTemplateTab = TemplateVariant.B },
+                        label = { Text("Varian B (Sudah Konfirmasi)") }
+                    )
+                }
+
+                val isA = selectedTemplateTab == TemplateVariant.A
+                val draft = if (isA) draftTemplateA else draftTemplateB
+                val errorText = if (isA) state.pesanErrorTemplateA else state.pesanErrorTemplateB
+                val variantName = if (isA) "Varian A" else "Varian B"
+
                 OutlinedTextField(
-                    value = draftTemplateA,
-                    onValueChange = { draftTemplateA = it },
+                    value = draft,
+                    onValueChange = { updated ->
+                        if (isA) draftTemplateA = updated else draftTemplateB = updated
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 4
                 )
-                state.pesanErrorTemplateA?.let { err ->
+                errorText?.let { err ->
                     Text(
                         text = err,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(
                         onClick = {
                             scope.launch {
-                                if (viewModel.simpanTemplate(TemplateVariant.A, draftTemplateA)) {
-                                    Toast.makeText(context, "Template A disimpan", Toast.LENGTH_SHORT).show()
+                                if (viewModel.simpanTemplate(selectedTemplateTab, draft)) {
+                                    Toast.makeText(
+                                        context,
+                                        "Template $variantName disimpan",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
-                        }
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("Simpan Varian A")
+                        Text("Simpan $variantName")
                     }
                     OutlinedButton(
                         onClick = {
                             scope.launch {
-                                viewModel.kembalikanTemplate(TemplateVariant.A)
+                                viewModel.kembalikanTemplate(selectedTemplateTab)
                             }
-                        }
-                    ) {
-                        Text("Kembalikan bawaan")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Varian B (Sudah Pernah Dikonfirmasi)",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                OutlinedTextField(
-                    value = draftTemplateB,
-                    onValueChange = { draftTemplateB = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 4
-                )
-                state.pesanErrorTemplateB?.let { err ->
-                    Text(
-                        text = err,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                if (viewModel.simpanTemplate(TemplateVariant.B, draftTemplateB)) {
-                                    Toast.makeText(context, "Template B disimpan", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    ) {
-                        Text("Simpan Varian B")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                viewModel.kembalikanTemplate(TemplateVariant.B)
-                            }
-                        }
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp)
                     ) {
                         Text("Kembalikan bawaan")
                     }
@@ -368,7 +381,9 @@ fun PengaturanScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = cardBorder,
+            elevation = cardElevation
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -397,7 +412,8 @@ fun PengaturanScreen(
                         } catch (_: Exception) {
                             // Abaikan bila intent tidak didukung perangkat
                         }
-                    }
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp)
                 ) {
                     Text("Buka pengaturan baterai")
                 }

@@ -10,6 +10,11 @@ class NotifikasiRepository(private val dao: NotifikasiDao) {
             list.map { it.toView() }
         }
 
+    fun observeUnreadCount(): Flow<Int> =
+        dao.observeBetween(0L, Long.MAX_VALUE).map { list ->
+            list.count { !it.notifikasi.dibaca }
+        }
+
     suspend fun markRead(id: Long) {
         dao.markRead(id)
     }

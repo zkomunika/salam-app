@@ -1,15 +1,19 @@
 package app.pantauizin.ui.pengaturan
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,12 +22,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,9 +54,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.SantriItem
+import app.pantauizin.ui.components.EmptyStateBox
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DataSantriScreen(
     viewModel: DataSantriViewModel,
@@ -63,9 +72,14 @@ fun DataSantriScreen(
     var formKamar by remember { mutableStateOf("") }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text("Data Santri") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -100,34 +114,74 @@ fun DataSantriScreen(
                 onValueChange = { viewModel.ubahQuery(it) },
                 label = { Text("Cari nama atau kamar santri") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (state.query.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.ubahQuery("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Hapus pencarian")
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            if (state.items.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Tidak ada santri yang cocok dengan pencarian.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            val totalSemua = state.totalAktif + state.totalNonaktif
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val filters = listOf(
+                    SantriStatusFilter.SEMUA to "Semua ($totalSemua)",
+                    SantriStatusFilter.AKTIF to "Aktif (${state.totalAktif})",
+                    SantriStatusFilter.NONAKTIF to "Nonaktif (${state.totalNonaktif})"
+                )
+                for ((f, label) in filters) {
+                    FilterChip(
+                        selected = state.statusFilter == f,
+                        onClick = { viewModel.pilihStatusFilter(f) },
+                        label = { Text(label) }
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (state.items.isEmpty()) {
+                val hasActiveFilter = state.query.isNotBlank() || state.statusFilter != SantriStatusFilter.SEMUA
+                EmptyStateBox(
+                    icon = Icons.Default.People,
+                    title = if (hasActiveFilter) "Tidak ada santri yang cocok" else "Belum ada data santri",
+                    subtitle = if (hasActiveFilter) {
+                        "Coba ubah kata kunci pencarian atau pilih filter lain."
+                    } else {
+                        "Ketuk tombol + di kanan bawah untuk menambah data santri."
+                    },
+                    actionLabel = if (hasActiveFilter) "Reset Filter" else null,
+                    onAction = if (hasActiveFilter) {
+                        {
+                            viewModel.ubahQuery("")
+                            viewModel.pilihStatusFilter(SantriStatusFilter.SEMUA)
+                        }
+                    } else {
+                        null
+                    }
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
                     items(state.items, key = { it.id }) { santri ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -168,7 +222,10 @@ fun DataSantriScreen(
                                     )
                                 }
 
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     IconButton(
                                         onClick = {
                                             editingSantri = santri
@@ -185,7 +242,8 @@ fun DataSantriScreen(
                                             scope.launch {
                                                 viewModel.setAktif(santri.id, !santri.aktif)
                                             }
-                                        }
+                                        },
+                                        modifier = Modifier.heightIn(min = 48.dp)
                                     ) {
                                         Text(if (santri.aktif) "Nonaktifkan" else "Aktifkan")
                                     }

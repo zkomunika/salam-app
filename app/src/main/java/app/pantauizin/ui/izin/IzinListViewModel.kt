@@ -36,14 +36,20 @@ class IzinListViewModel(
     private val _filter = MutableStateFlow(IzinFilter.SEMUA)
     val filter: StateFlow<IzinFilter> = _filter.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _filterCounts = MutableStateFlow<Map<IzinFilter, Int>>(emptyMap())
+    val filterCounts: StateFlow<Map<IzinFilter, Int>> = _filterCounts.asStateFlow()
+
     private val _items = MutableStateFlow<List<IzinListItemUi>>(emptyList())
     val items: StateFlow<List<IzinListItemUi>> = _items.asStateFlow()
 
     init {
         viewModelScope.launch {
-            combine(izinRepo.observe(), _filter) { list, currentFilter ->
+            combine(izinRepo.observe(), _filter, _searchQuery) { list, currentFilter, query ->
                 val today = todayProvider()
-                list.map { view ->
+                val allItems = list.map { view ->
                     val snap = view.toSnapshot()
                     val status = StatusResolver.status(snap, today)
                     IzinListItemUi(
@@ -53,8 +59,22 @@ class IzinListViewModel(
                         hariTerlambat = StatusResolver.hariTerlambat(snap, today),
                         sudahKonfirmasi = view.konfirmasi.isNotEmpty()
                     )
-                }.filter { currentFilter.matches(it.status) }
-            }.collect { filtered ->
+                }
+                val counts = IzinFilter.entries.associateWith { f ->
+                    allItems.count { f.matches(it.status) }
+                }
+                val trimmed = query.trim()
+                val filtered = allItems.filter { item ->
+                    currentFilter.matches(item.status) && (
+                        trimmed.isEmpty() ||
+                            item.view.nama.contains(trimmed, ignoreCase = true) ||
+                            item.view.kamar.contains(trimmed, ignoreCase = true) ||
+                            item.view.alasanDetail.contains(trimmed, ignoreCase = true)
+                        )
+                }
+                counts to filtered
+            }.collect { (counts, filtered) ->
+                _filterCounts.value = counts
                 _items.value = filtered
             }
         }
@@ -62,6 +82,10 @@ class IzinListViewModel(
 
     fun pilihFilter(newFilter: IzinFilter) {
         _filter.value = newFilter
+    }
+
+    fun ubahSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     suspend fun tandaiKembali(izinId: Long, tanggal: LocalDate) {
