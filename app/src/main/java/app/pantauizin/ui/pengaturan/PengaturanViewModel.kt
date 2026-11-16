@@ -32,7 +32,9 @@ data class PengaturanUiState(
     val currentUser: UserProfile? = null,
     val isMigrating: Boolean = false,
     val migrationProgress: String? = null,
-    val migrationResult: String? = null
+    val migrationResult: String? = null,
+    val isSyncing: Boolean = false,
+    val syncResult: String? = null
 )
 
 class PengaturanViewModel(
@@ -93,6 +95,32 @@ class PengaturanViewModel(
 
     fun logout() {
         authManager?.signOut()
+    }
+
+    fun sinkronkanSekarang() {
+        val sm = syncManager ?: return
+        _uiState.update { it.copy(isSyncing = true, syncResult = null) }
+        viewModelScope.launch {
+            val result = sm.syncNow()
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncResult = "Data berhasil disinkronkan dari server"
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncResult = "Gagal sinkronisasi: ${err.message}"
+                        )
+                    }
+                }
+            )
+        }
     }
 
     fun migrasiDataKeCloud() {

@@ -29,12 +29,16 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -70,6 +74,7 @@ fun DataSantriScreen(
     var editingSantri by remember { mutableStateOf<SantriItem?>(null) }
     var formNama by remember { mutableStateOf("") }
     var formKamar by remember { mutableStateOf("") }
+    var kamarExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -112,7 +117,7 @@ fun DataSantriScreen(
             OutlinedTextField(
                 value = state.query,
                 onValueChange = { viewModel.ubahQuery(it) },
-                label = { Text("Cari nama atau kamar santri") },
+                label = { Text("Cari nama santri") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (state.query.isNotEmpty()) {
@@ -125,6 +130,46 @@ fun DataSantriScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = kamarExpanded,
+                onExpandedChange = { kamarExpanded = !kamarExpanded }
+            ) {
+                OutlinedTextField(
+                    value = state.kamarFilter?.let { "Kamar $it" } ?: "Semua kamar",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Filter kamar") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kamarExpanded) },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = kamarExpanded,
+                    onDismissRequest = { kamarExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Semua kamar") },
+                        onClick = {
+                            viewModel.pilihKamarFilter(null)
+                            kamarExpanded = false
+                        }
+                    )
+                    state.kamarOptions.forEach { kamar ->
+                        DropdownMenuItem(
+                            text = { Text("Kamar $kamar") },
+                            onClick = {
+                                viewModel.pilihKamarFilter(kamar)
+                                kamarExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -150,7 +195,9 @@ fun DataSantriScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (state.items.isEmpty()) {
-                val hasActiveFilter = state.query.isNotBlank() || state.statusFilter != SantriStatusFilter.SEMUA
+                val hasActiveFilter = state.query.isNotBlank() ||
+                    state.statusFilter != SantriStatusFilter.SEMUA ||
+                    state.kamarFilter != null
                 EmptyStateBox(
                     icon = Icons.Default.People,
                     title = if (hasActiveFilter) "Tidak ada santri yang cocok" else "Belum ada data santri",
@@ -164,6 +211,7 @@ fun DataSantriScreen(
                         {
                             viewModel.ubahQuery("")
                             viewModel.pilihStatusFilter(SantriStatusFilter.SEMUA)
+                            viewModel.pilihKamarFilter(null)
                         }
                     } else {
                         null

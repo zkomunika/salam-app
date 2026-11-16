@@ -10,9 +10,12 @@ import app.pantauizin.data.KonfirmasiEntity
 import app.pantauizin.data.SantriEntity
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -57,26 +60,14 @@ class FirestoreSyncManager(
                 if (snapshot == null) return@addSnapshotListener
 
                 scope.launch(Dispatchers.IO) {
-                    val santriDao = database.santriDao()
-                    for (doc in snapshot.documents) {
-                        val fsSantri = doc.toObject(FirestoreSantri::class.java) ?: continue
-                        val local = santriDao.getById(fsSantri.id)
-                        val entity = SantriEntity(
-                            id = fsSantri.id,
-                            nama = fsSantri.nama,
-                            kamar = fsSantri.kamar,
-                            aktif = fsSantri.aktif
-                        )
-                        if (local == null) {
-                            try {
-                                santriDao.insert(entity)
-                            } catch (_: Exception) {
-                                // Ignore conflict if duplicate name
-                            }
-                        } else if (local != entity) {
-                            santriDao.update(entity)
-                        }
-                    }
+                    val removedIds = snapshot.documentChanges
+                        .filter { it.type == DocumentChange.Type.REMOVED }
+                        .mapNotNull { it.document.id.toLongOrNull() }
+                    applySantriSnapshot(
+                        docs = snapshot.documents,
+                        removedIds = removedIds,
+                        reconcileMissing = !snapshot.metadata.isFromCache && !snapshot.metadata.hasPendingWrites()
+                    )
                 }
             }
 
@@ -90,66 +81,176 @@ class FirestoreSyncManager(
                 if (snapshot == null) return@addSnapshotListener
 
                 scope.launch(Dispatchers.IO) {
-                    val izinDao = database.izinDao()
-                    val konfirmasiDao = database.konfirmasiDao()
+                    val removedIds = snapshot.documentChanges
+                        .filter { it.type == DocumentChange.Type.REMOVED }
+                        .mapNotNull { it.document.id.toLongOrNull() }
+                    applyIzinSnapshot(
+                        docs = snapshot.documents,
+                        removedIds = removedIds,
+                        reconcileMissing = !snapshot.metadata.isFromCache && !snapshot.metadata.hasPendingWrites()
+                    )
+                }
+            }
+    }
 
-                    for (doc in snapshot.documents) {
-                        val fsIzin = doc.toObject(FirestoreIzin::class.java) ?: continue
-                        val local = izinDao.get(fsIzin.id)
+    /**
+     * Menarik data terbaru langsung dari server Firestore dan menyamakan database lokal (termasuk penghapusan).
+     */
+    suspend fun syncNow(): Result<Unit> = withContext(Dispatchers.IO) {
+        val db = firestore ?: return@withContext Result.failure(IllegalStateException("Firebase belum terhubung"))
+        try {
+            val santriSnap = db.collection("santri").get(Source.SERVER).await()
+            applySantriSnapshot(
+                docs = santriSnap.documents,
+                removedIds = emptyList(),
+                reconcileMissing = true
+            )
 
-                        val entity = IzinEntity(
-                            id = fsIzin.id,
-                            santriId = fsIzin.santriId,
-                            tanggalPulang = parseLocalDate(fsIzin.tanggalPulang) ?: LocalDate.now(),
-                            alasanJenis = parseAlasan(fsIzin.alasanJenis),
-                            alasanDetail = fsIzin.alasanDetail,
-                            batasJenis = parseBatas(fsIzin.batasJenis),
-                            batasAwal = parseLocalDate(fsIzin.batasAwal) ?: LocalDate.now(),
-                            noWaWali = fsIzin.noWaWali,
-                            tanggalKembali = parseLocalDate(fsIzin.tanggalKembali),
-                            dibuatPada = if (fsIzin.dibuatPada > 0) Instant.ofEpochMilli(fsIzin.dibuatPada) else Instant.now()
-                        )
+            val izinSnap = db.collection("izin").get(Source.SERVER).await()
+            applyIzinSnapshot(
+                docs = izinSnap.documents,
+                removedIds = emptyList(),
+                reconcileMissing = true
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.w("FirestoreSync", "Gagal sinkronisasi manual", e)
+            Result.failure(e)
+        }
+    }
 
-                        if (local == null) {
-                            try {
-                                izinDao.insert(entity)
-                            } catch (_: Exception) {
-                                izinDao.update(entity)
-                            }
-                        } else if (local.izin != entity) {
-                            izinDao.update(entity)
-                        }
+    private suspend fun applySantriSnapshot(
+        docs: List<DocumentSnapshot>,
+        removedIds: List<Long>,
+        reconcileMissing: Boolean
+    ) {
+        val santriDao = database.santriDao()
+        val cloudIds = HashSet<Long>()
 
-                        // Sync konfirmasi-konfirmasi
-                        for (fsKonf in fsIzin.konfirmasiList) {
-                            // Cek jika gambar Base64 ada, simpan ke berkas lokal jika belum ada
-                            var localBuktiPath: String? = null
-                            if (!fsKonf.buktiBase64.isNullOrBlank()) {
-                                localBuktiPath = ImageCompressor.saveBase64ToLocalFile(
-                                    context = context,
-                                    base64String = fsKonf.buktiBase64,
-                                    customFileName = "bukti_konf_${fsKonf.id}.jpg"
-                                )
-                            }
+        for (doc in docs) {
+            val fsSantri = doc.toObject(FirestoreSantri::class.java) ?: continue
+            cloudIds.add(fsSantri.id)
+            val local = santriDao.getById(fsSantri.id)
+            val entity = SantriEntity(
+                id = fsSantri.id,
+                nama = fsSantri.nama,
+                kamar = fsSantri.kamar,
+                aktif = fsSantri.aktif
+            )
+            if (local == null) {
+                try {
+                    santriDao.insert(entity)
+                } catch (_: Exception) {
+                    // Ignore conflict if duplicate name
+                }
+            } else if (local != entity) {
+                santriDao.update(entity)
+            }
+        }
 
-                            val konfEntity = KonfirmasiEntity(
-                                id = fsKonf.id,
-                                izinId = fsIzin.id,
-                                tanggalKembaliBaru = parseLocalDate(fsKonf.tanggalKembaliBaru),
-                                catatan = fsKonf.catatan,
-                                buktiPath = localBuktiPath,
-                                dibuatPada = if (fsKonf.dibuatPada > 0) Instant.ofEpochMilli(fsKonf.dibuatPada) else Instant.now()
-                            )
+        for (id in removedIds) {
+            try {
+                santriDao.delete(id)
+            } catch (_: Exception) {
+                // Ignore if still referenced by active izin
+            }
+        }
 
-                            try {
-                                konfirmasiDao.insert(konfEntity)
-                            } catch (_: Exception) {
-                                // Already exists
-                            }
-                        }
+        if (reconcileMissing && docs.isNotEmpty()) {
+            val localAll = santriDao.observeAll().first()
+            for (local in localAll) {
+                if (local.id !in cloudIds) {
+                    try {
+                        santriDao.delete(local.id)
+                    } catch (_: Exception) {
+                        // Ignore FK constraint
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun applyIzinSnapshot(
+        docs: List<DocumentSnapshot>,
+        removedIds: List<Long>,
+        reconcileMissing: Boolean
+    ) {
+        val izinDao = database.izinDao()
+        val konfirmasiDao = database.konfirmasiDao()
+        val cloudIds = HashSet<Long>()
+
+        for (doc in docs) {
+            val fsIzin = doc.toObject(FirestoreIzin::class.java) ?: continue
+            cloudIds.add(fsIzin.id)
+            val local = izinDao.get(fsIzin.id)
+
+            val entity = IzinEntity(
+                id = fsIzin.id,
+                santriId = fsIzin.santriId,
+                tanggalPulang = parseLocalDate(fsIzin.tanggalPulang) ?: LocalDate.now(),
+                alasanJenis = parseAlasan(fsIzin.alasanJenis),
+                alasanDetail = fsIzin.alasanDetail,
+                batasJenis = parseBatas(fsIzin.batasJenis),
+                batasAwal = parseLocalDate(fsIzin.batasAwal) ?: LocalDate.now(),
+                noWaWali = fsIzin.noWaWali,
+                tanggalKembali = parseLocalDate(fsIzin.tanggalKembali),
+                dibuatPada = if (fsIzin.dibuatPada > 0) Instant.ofEpochMilli(fsIzin.dibuatPada) else Instant.now()
+            )
+
+            if (local == null) {
+                try {
+                    izinDao.insert(entity)
+                } catch (_: Exception) {
+                    izinDao.update(entity)
+                }
+            } else if (local.izin != entity) {
+                izinDao.update(entity)
+            }
+
+            // Sync konfirmasi-konfirmasi
+            for (fsKonf in fsIzin.konfirmasiList) {
+                var localBuktiPath: String? = null
+                if (!fsKonf.buktiBase64.isNullOrBlank()) {
+                    localBuktiPath = ImageCompressor.saveBase64ToLocalFile(
+                        context = context,
+                        base64String = fsKonf.buktiBase64,
+                        customFileName = "bukti_konf_${fsKonf.id}.jpg"
+                    )
+                }
+
+                val konfEntity = KonfirmasiEntity(
+                    id = fsKonf.id,
+                    izinId = fsIzin.id,
+                    tanggalKembaliBaru = parseLocalDate(fsKonf.tanggalKembaliBaru),
+                    catatan = fsKonf.catatan,
+                    buktiPath = localBuktiPath,
+                    dibuatPada = if (fsKonf.dibuatPada > 0) Instant.ofEpochMilli(fsKonf.dibuatPada) else Instant.now()
+                )
+
+                try {
+                    konfirmasiDao.insert(konfEntity)
+                } catch (_: Exception) {
+                    // Already exists
+                }
+            }
+        }
+
+        for (id in removedIds) {
+            try {
+                izinDao.delete(id)
+            } catch (_: Exception) {}
+        }
+
+        if (reconcileMissing) {
+            val localAll = izinDao.observeAll().first()
+            for (local in localAll) {
+                if (local.izin.id !in cloudIds) {
+                    try {
+                        izinDao.delete(local.izin.id)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
     }
 
     fun stopRealtimeSync() {

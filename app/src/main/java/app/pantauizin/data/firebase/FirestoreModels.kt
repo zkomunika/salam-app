@@ -8,6 +8,19 @@ enum class UserRole {
     PENGURUS
 }
 
+private val SANTRI_MANAGER_EMAILS = setOf(
+    "miftahudin@asas.id",
+    "fikrimhilmi@asas.id",
+    "mazkaanggiri@asas.id",
+    "mfajrulhikam@asas.id",
+    "mfikrihambali@asas.id",
+    "mthoriqmusthafa@asas.id",
+    "mohghiyatsmaulanaaripin@asas.id",
+    "akmalmasykurhidayat@asas.id",
+    "mazmanabdulaziz@asas.id",
+    "maulanahasyim@asas.id"
+)
+
 @Keep
 data class UserProfile(
     val uid: String = "",
@@ -17,6 +30,8 @@ data class UserProfile(
     val createdAt: Long = System.currentTimeMillis()
 ) {
     val isAdmin: Boolean get() = role.equals(UserRole.ADMIN.name, ignoreCase = true)
+    val canManageSantri: Boolean
+        get() = isAdmin || email.trim().lowercase() in SANTRI_MANAGER_EMAILS
 }
 
 @Keep

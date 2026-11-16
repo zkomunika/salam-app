@@ -25,11 +25,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -170,14 +170,33 @@ fun PengaturanScreen(
                         }
                     }
 
-                    if (state.currentUser?.isAdmin == true) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Sinkronisasi Cloud:",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Sinkronisasi Cloud:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.sinkronkanSekarang() },
+                        enabled = !state.isSyncing,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (state.isSyncing) "Menyinkronkan..." else "Sinkronkan / Refresh Data")
+                    }
+                    if (state.syncResult != null) {
                         Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = state.syncResult ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    if (state.currentUser?.isAdmin == true) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = { viewModel.migrasiDataKeCloud() },
                             enabled = !state.isMigrating,
@@ -327,48 +346,51 @@ fun PengaturanScreen(
             }
         }
 
-        // 2. Data santri
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = cardBorder,
-            elevation = cardElevation
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.People, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
+        // 2. Data santri (hanya untuk Admin & pengurus yang ditunjuk)
+        if (state.currentUser?.canManageSantri == true) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = cardBorder,
+                elevation = cardElevation
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.People, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Data Master Santri",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Data Master Santri",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = "Kelola daftar santri, pindah kamar, atau nonaktifkan santri yang sudah lulus/boyong.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Kelola daftar santri, pindah kamar, atau nonaktifkan santri yang sudah lulus/boyong.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = onOpenDataSantri,
-                    modifier = Modifier.heightIn(min = 48.dp)
-                ) {
-                    Text("Kelola Data Santri")
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = onOpenDataSantri,
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Text("Kelola Data Santri")
+                    }
                 }
             }
         }
 
-        // 3. Template pesan A dan B (Tabbed)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = cardBorder,
-            elevation = cardElevation
-        ) {
+        // 3. Template pesan A dan B (hanya Admin)
+        if (state.currentUser?.isAdmin == true) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = cardBorder,
+                elevation = cardElevation
+            ) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -452,48 +474,6 @@ fun PengaturanScreen(
                     }
                 }
             }
-        }
-
-        // 4. Petunjuk baterai Vivo
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = cardBorder,
-            elevation = cardElevation
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.BatteryAlert, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Petunjuk Baterai & Latar Belakang",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "HP Vivo biasa menghentikan aplikasi di latar belakang. Agar pengingat harian selalu muncul tepat waktu, aktifkan izin \"mulai otomatis\" (Autostart) dan pilih \"tanpa pembatasan baterai\" (Konsumsi daya latar belakang tinggi) secara manual untuk aplikasi ini.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedButton(
-                    onClick = {
-                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        try {
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            // Abaikan bila intent tidak didukung perangkat
-                        }
-                    },
-                    modifier = Modifier.heightIn(min = 48.dp)
-                ) {
-                    Text("Buka pengaturan baterai")
-                }
             }
         }
     }

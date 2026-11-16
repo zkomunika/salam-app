@@ -25,6 +25,9 @@ interface SantriDao {
     @Update
     suspend fun update(e: SantriEntity)
 
+    @Query("DELETE FROM santri WHERE id = :id")
+    suspend fun delete(id: Long)
+
     @Query("SELECT * FROM santri WHERE nama = :nama COLLATE NOCASE LIMIT 1")
     suspend fun findByNama(nama: String): SantriEntity?
 

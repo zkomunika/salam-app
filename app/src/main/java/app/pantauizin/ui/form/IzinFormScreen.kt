@@ -51,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
@@ -185,14 +186,23 @@ fun IzinFormScreen(
                                         .heightIn(min = 48.dp)
                                         .clickable { viewModel.pilihSantri(santri.id) }
                                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(santri.nama, style = MaterialTheme.typography.bodyLarge)
                                     Text(
-                                        "Kamar ${santri.kamar}",
+                                        text = santri.nama,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(end = 12.dp)
+                                    )
+                                    Text(
+                                        text = "Kamar ${santri.kamar}",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        softWrap = false,
+                                        maxLines = 1
                                     )
                                 }
                             }

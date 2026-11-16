@@ -21,6 +21,8 @@ enum class SantriStatusFilter {
 data class DataSantriUiState(
     val query: String = "",
     val statusFilter: SantriStatusFilter = SantriStatusFilter.SEMUA,
+    val kamarFilter: String? = null,
+    val kamarOptions: List<String> = emptyList(),
     val totalAktif: Int = 0,
     val totalNonaktif: Int = 0,
     val items: List<SantriItem> = emptyList(),
@@ -33,14 +35,18 @@ class DataSantriViewModel(
 
     private val _query = MutableStateFlow("")
     private val _statusFilter = MutableStateFlow(SantriStatusFilter.SEMUA)
+    private val _kamarFilter = MutableStateFlow<String?>(null)
     private val _uiState = MutableStateFlow(DataSantriUiState())
     val uiState: StateFlow<DataSantriUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            combine(santriRepo.observe(), _query, _statusFilter) { all, q, statusFilter ->
+            combine(santriRepo.observe(), _query, _statusFilter, _kamarFilter) { all, q, statusFilter, kamarFilter ->
                 val aktifCount = all.count { it.aktif }
                 val nonaktifCount = all.size - aktifCount
+                val kamarOptions = all.map { it.kamar }
+                    .distinct()
+                    .sortedWith(compareBy({ it.toIntOrNull() ?: Int.MAX_VALUE }, { it }))
                 val trimmed = q.trim()
                 val filtered = all.filter { santri ->
                     val matchesStatus = when (statusFilter) {
@@ -48,23 +54,23 @@ class DataSantriViewModel(
                         SantriStatusFilter.AKTIF -> santri.aktif
                         SantriStatusFilter.NONAKTIF -> !santri.aktif
                     }
+                    val matchesKamar = kamarFilter == null || santri.kamar == kamarFilter
                     val matchesQuery = trimmed.isEmpty() ||
-                        santri.nama.contains(trimmed, ignoreCase = true) ||
-                        santri.kamar.contains(trimmed, ignoreCase = true)
-                    matchesStatus && matchesQuery
+                        santri.nama.contains(trimmed, ignoreCase = true)
+                    matchesStatus && matchesKamar && matchesQuery
                 }
-                Triple(q to statusFilter, aktifCount to nonaktifCount, filtered)
-            }.collect { (filters, counts, filtered) ->
                 _uiState.update {
                     it.copy(
-                        query = filters.first,
-                        statusFilter = filters.second,
-                        totalAktif = counts.first,
-                        totalNonaktif = counts.second,
+                        query = q,
+                        statusFilter = statusFilter,
+                        kamarFilter = kamarFilter,
+                        kamarOptions = kamarOptions,
+                        totalAktif = aktifCount,
+                        totalNonaktif = nonaktifCount,
                         items = filtered
                     )
                 }
-            }
+            }.collect { }
         }
     }
 
@@ -74,6 +80,10 @@ class DataSantriViewModel(
 
     fun pilihStatusFilter(filter: SantriStatusFilter) {
         _statusFilter.value = filter
+    }
+
+    fun pilihKamarFilter(kamar: String?) {
+        _kamarFilter.value = kamar
     }
 
     fun hapusPesanError() {
