@@ -1,7 +1,6 @@
 ---
 name: brand
 description: Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.
-argument-hint: "[update|review|create] [args]"
 metadata:
   author: claudekit
   version: "1.0.0"
@@ -42,7 +41,7 @@ node scripts/extract-colors.cjs <image-path>
 ## Brand Sync Workflow
 
 ```bash
-# 1. Edit docs/brand-guidelines.md (or use /brand update)
+# 1. Edit docs/brand-guidelines.md (or follow references/update.md when the user asks to update brand identity)
 # 2. Sync to design tokens
 node scripts/sync-brand-to-tokens.cjs
 # 3. Verify
@@ -53,12 +52,6 @@ node scripts/inject-brand-context.cjs --json | head -20
 - `docs/brand-guidelines.md` → Source of truth
 - `assets/design-tokens.json` → Token definitions
 - `assets/design-tokens.css` → CSS variables
-
-## Subcommands
-
-| Subcommand | Description | Reference |
-|------------|-------------|-----------|
-| `update` | Update brand identity and sync to all design systems | `references/update.md` |
 
 ## References
 
@@ -92,6 +85,7 @@ node scripts/inject-brand-context.cjs --json | head -20
 
 ## Routing
 
-1. Parse subcommand from `$ARGUMENTS` (first word)
-2. Load corresponding `references/{subcommand}.md`
-3. Execute with remaining arguments
+- User wants to change or sync brand identity (colors, fonts, voice) → read `references/update.md` and follow it.
+- User wants a brand review or audit → read `references/consistency-checklist.md` and `references/approval-checklist.md`.
+- User wants a new brand guideline document → start from `templates/brand-guidelines-starter.md`.
+- Otherwise use the reference table above to load only the file that matches the question.

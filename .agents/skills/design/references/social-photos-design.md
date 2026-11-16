@@ -51,15 +51,15 @@ Create 3-5 concept ideas that:
 - Vary in composition, color, typography approach
 - Align with brand guidelines if available
 
-Present ideas to user via `AskUserQuestion` for approval before designing.
+Present ideas directly in chat and wait for the user's approval before continuing with the design.
 
 ### Step 4: Design HTML Files
 
-Activate these skills in sequence:
+Use these skills in sequence:
 
-1. **`/ckm:brand`** — Extract brand colors, fonts, voice from user's project
-2. **`/ckm:design-system`** — Get design tokens (spacing, typography scale, color palette)
-3. **Randomly invoke ONE of:** `/ck:ui-ux-pro-max` OR `/ck:frontend-design` — for layout, hierarchy, visual balance. Pick one at random each run for design variety.
+1. **`brand` skill** — Extract brand colors, fonts, voice from user's project
+2. **`design-system` skill** — Get design tokens (spacing, typography scale, color palette)
+3. **Layout and styling** — Use the `ui-ux-pro-max` skill when choosing a style, color palette, or font pairing; use the `frontend-design` skill (if available) when executing the layout.
 
 For each approved idea + each target size, create an HTML file:
 

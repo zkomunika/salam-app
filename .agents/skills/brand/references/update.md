@@ -1,6 +1,6 @@
 Update brand colors, typography, and style - automatically syncs to all design system files.
 
-<args>$ARGUMENTS</args>
+Use the user's request as the update brief.
 
 ## Overview
 
@@ -13,7 +13,7 @@ This command systematically updates:
 
 ### Step 1: Gather Brand Input
 
-Use `AskUserQuestion` to collect:
+Ask the user directly in chat and wait for the answer before continuing to collect:
 
 **Theme Selection:**
 - Theme name (e.g., "Ocean Professional", "Electric Creative", "Forest Calm")
@@ -88,16 +88,9 @@ Output summary:
 
 ## Examples
 
-```bash
-# Interactive mode
-/brand:update
-
-# With theme hint
-/brand:update "Ocean Professional"
-
-# Quick preset
-/brand:update "midnight purple"
-```
+- "Update brand colors interactively"
+- "Update brand to the Ocean Professional theme"
+- "Update brand using the midnight purple preset"
 
 ## Color Presets
 

@@ -1,7 +1,6 @@
 ---
 name: design-system
 description: Token architecture, component specifications, and slide generation. Three-layer tokens (primitive→semantic→component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.
-argument-hint: "[component or token]"
 license: MIT
 metadata:
   author: claudekit
@@ -228,10 +227,10 @@ Working example with all features:
 assets/designs/slides/claudekit-pitch-251223.html
 ```
 
-### Command
+### Example Request
 
-```bash
-/slides:create "10-slide investor pitch for ClaudeKit Marketing"
+```
+Create a 10-slide investor pitch for ClaudeKit Marketing
 ```
 
 ## Best Practices
