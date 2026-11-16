@@ -5,4 +5,7 @@ local.properties
 .idea/
 *.iml
 .DS_Store
+.agents/
+skills-lock.json
+build.log
 
