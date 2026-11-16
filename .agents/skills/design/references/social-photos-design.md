@@ -1,6 +1,6 @@
 # Social Photos Design Guide
 
-Design social media images via HTML/CSS rendering + screenshot export. Orchestrates `ui-ux-pro-max`, `brand`, `design-system`, and `chrome-devtools` skills.
+Design social media images via HTML/CSS rendering and Playwright PNG export. Coordinates `ui-ux-pro-max`, `brand`, and `design-system` skills alongside `.agents/skills/banner-design/scripts/export-png.py`.
 
 ## Platform Sizes
 
@@ -22,18 +22,7 @@ Design social media images via HTML/CSS rendering + screenshot export. Orchestra
 
 ## Workflow
 
-### Step 1: Activate Project Management
-
-Invoke `project-management` skill to create persistent TODO tasks via Claude's native task orchestration. Break down into:
-- Requirement analysis task
-- Idea generation task(s)
-- HTML design task(s) — can parallelize per size/variant
-- Screenshot export task(s) — can parallelize per file
-- Report generation task
-
-Spawn parallel subagents for independent tasks (e.g., multiple HTML files for different sizes).
-
-### Step 2: Analyze Requirements
+### Step 1: Analyze Requirements
 
 Parse user input for:
 - **Subject/topic** — what the social photo represents
@@ -43,7 +32,7 @@ Parse user input for:
 - **Content elements** — headline, subtext, CTA, images, icons
 - **Quantity** — how many variations (default: 3)
 
-### Step 3: Generate Ideas
+### Step 2: Generate Ideas
 
 Create 3-5 concept ideas that:
 - Match the input prompt/requirements
@@ -53,7 +42,7 @@ Create 3-5 concept ideas that:
 
 Present ideas directly in chat and wait for the user's approval before continuing with the design.
 
-### Step 4: Design HTML Files
+### Step 3: Design HTML Files
 
 Use these skills in sequence:
 
@@ -117,163 +106,31 @@ output/social-photos/
 </html>
 ```
 
-### Step 5: Screenshot Export
+### Step 4: PNG Export
 
-Use Chrome headless, `chrome-devtools` skill, or Playwright/Puppeteer to capture exact-size screenshots.
-
-**IMPORTANT:** Always add a delay (3-5s) after page load for fonts/images to fully render before capture.
-
-#### Option A: Chrome Headless CLI (Recommended — zero dependencies)
+Use the bundled Playwright exporter (`.agents/skills/banner-design/scripts/export-png.py`) to render each HTML file at exact pixel dimensions with retina scaling (`--scale 2` by default):
 
 ```bash
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-DELAY=5  # seconds for fonts/images to load
-
-"$CHROME" \
-  --headless \
-  --disable-gpu \
-  --no-sandbox \
-  --hide-scrollbars \
-  --window-size="${WIDTH},${HEIGHT}" \
-  --virtual-time-budget=$((DELAY * 1000)) \
-  --screenshot="output.png" \
-  "file:///path/to/file.html"
+python .agents/skills/banner-design/scripts/export-png.py \
+  --html "output/social-photos/idea-1-instagram-post-1080x1080.html" \
+  --width 1080 --height 1080 \
+  --output "output/social-photos/exports/idea-1-instagram-post-1080x1080.png"
 ```
 
-Key flags:
-- `--virtual-time-budget=5000` — waits 5s virtual time for assets (Google Fonts, images) to load
-- `--hide-scrollbars` — prevents scrollbar artifacts in screenshots
-- `--window-size=WxH` — sets exact pixel dimensions
+Keep web fonts clean and wait conditions automatic (`networkidle` + `document.fonts.ready` are handled inside `export-png.py`). If an environment uses custom Chrome CLI instead, pass `--window-size="${WIDTH},${HEIGHT}"` and `--hide-scrollbars`.
 
-#### Option B: chrome-devtools skill
+### Step 5: Verify & Fix Designs
 
-Invoke `/chrome-devtools` with instructions to:
-1. Open each HTML file in browser
-2. Set viewport to exact target dimensions
-3. Wait 3-5s for fonts/images to fully load
-4. Screenshot full page to PNG
-5. Save to `output/social-photos/exports/`
+Open each exported PNG directly (or view it with your file/image inspection tool) and verify visual quality:
 
-#### Option C: Playwright script
+1. Check font rendering, brand color accuracy, and thumbnail legibility
+2. Confirm there is no overflow, text clipping, or safe-zone infringement (keep key elements inside the central 80%)
+3. Confirm text contrast meets WCAG AA (4.5:1)
+4. If issues are found, fix the HTML/CSS source, re-run `export-png.py`, and inspect the new PNG again
 
-```javascript
-const { chromium } = require('playwright');
+### Step 6: Present Results
 
-async function captureScreenshots(htmlFiles) {
-  const browser = await chromium.launch();
-
-  for (const file of htmlFiles) {
-    const [width, height] = file.match(/(\d+)x(\d+)/).slice(1).map(Number);
-
-    const page = await browser.newPage();
-    await page.setViewportSize({ width, height });
-    await page.goto(`file://${file}`, { waitUntil: 'networkidle' });
-    // Wait for fonts/images to fully render
-    await page.waitForTimeout(3000);
-
-    const outputPath = file.replace('.html', '.png').replace('social-photos/', 'social-photos/exports/');
-    await page.screenshot({ path: outputPath, type: 'png' });
-    await page.close();
-  }
-
-  await browser.close();
-}
-```
-
-#### Option D: Puppeteer script
-
-```javascript
-const puppeteer = require('puppeteer');
-
-async function captureScreenshots(htmlFiles) {
-  const browser = await puppeteer.launch();
-
-  for (const file of htmlFiles) {
-    const [width, height] = file.match(/(\d+)x(\d+)/).slice(1).map(Number);
-
-    const page = await browser.newPage();
-    await page.setViewport({ width, height, deviceScaleFactor: 2 }); // 2x for retina
-    await page.goto(`file://${file}`, { waitUntil: 'networkidle0' });
-    // Wait for fonts/images to fully render
-    await new Promise(r => setTimeout(r, 3000));
-
-    const outputPath = file.replace('.html', '.png').replace('social-photos/', 'social-photos/exports/');
-    await page.screenshot({ path: outputPath, type: 'png' });
-    await page.close();
-  }
-
-  await browser.close();
-}
-```
-
-**IMPORTANT:** Use `deviceScaleFactor: 2` for retina-quality output (Puppeteer only).
-
-### Step 6: Verify & Fix Designs
-
-Use Chrome MCP or `chrome-devtools` skill to visually inspect each exported PNG:
-
-1. Open exported screenshots and check for layout/styling issues
-2. Verify: fonts rendered correctly, colors match brand, text readable at thumbnail size
-3. Check: no overflow, no cut-off content, safe zones respected, visual hierarchy clear
-4. If issues found → fix HTML source → re-export screenshot → verify again
-5. Repeat until all designs pass visual QA
-
-**Common issues to check:**
-- Fonts not loaded (fallback to system fonts)
-- Text overflow or clipping
-- Elements outside safe zone (central 80%)
-- Low contrast text (below WCAG AA 4.5:1)
-- Misaligned elements or broken layouts
-
-### Step 7: Generate Summary Report
-
-Save report to `plans/reports/` with naming pattern from session hooks.
-
-Report structure:
-
-```markdown
-# Social Photos Design Report
-
-## Overview
-- Prompt/requirements: {original input}
-- Platforms: {target platforms}
-- Variations: {count}
-- Style: {chosen style}
-
-## Ideas Generated
-1. **{Idea name}** — {brief description, rationale}
-2. ...
-
-## Design Decisions
-- Color palette: {colors used, why}
-- Typography: {fonts, sizes, why}
-- Layout: {composition approach, why}
-- Brand alignment: {how brand guidelines influenced design}
-
-## Output Files
-| File | Size | Platform | Preview |
-|------|------|----------|---------|
-| exports/{filename}.png | {WxH} | {platform} | {description} |
-
-## Why This Works
-- {Platform-specific reasoning}
-- {Brand alignment reasoning}
-- {Visual hierarchy reasoning}
-- {Engagement potential reasoning}
-
-## Recommendations
-- {A/B test suggestions}
-- {Platform-specific tips}
-- {Iteration opportunities}
-```
-
-### Step 8: Organize Output
-
-Invoke `assets-organizing` skill to organize all output files and reports:
-- Move/copy exported PNGs to proper asset directories
-- Ensure reports are in `plans/reports/` with correct naming
-- Clean up intermediate HTML files if requested
-- Tag outputs with metadata (platform, size, concept name)
+Present the finalized PNG paths, target platforms, pixel dimensions, and brief design rationale directly to the user in chat. Clean up or organize intermediate HTML files alongside the exported assets in `output/social-photos/`.
 
 ## Design Best Practices
 
@@ -326,4 +183,4 @@ This sub-skill handles social media image design only. Does NOT handle:
 - Animation/motion graphics
 - Print production files (CMYK, bleed)
 - Direct social media posting/scheduling
-- AI image generation (use `ai-artist` skill for that)
+- AI image generation (only compose user-supplied images or CSS/SVG visuals)

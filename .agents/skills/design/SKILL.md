@@ -152,20 +152,17 @@ python3 .agents/skills/design/scripts/icon/generate.py --prompt "user profile" -
 
 ## Social Photos (Built-in)
 
-Multi-platform social image design: HTML/CSS → screenshot export. Uses `ui-ux-pro-max`, `brand`, `design-system`, `chrome-devtools` skills.
+Multi-platform social image design: HTML/CSS → PNG export. Uses `ui-ux-pro-max`, `brand`, and `design-system` skills, plus `.agents/skills/banner-design/scripts/export-png.py`.
 
 Load `references/social-photos-design.md` for sizes, templates, best practices.
 
 ### Social Photos: Workflow
 
-1. **Orchestrate** — `project-management` skill for TODO tasks; parallel subagents for independent work
-2. **Analyze** — Parse prompt: subject, platforms, style, brand context, content elements
-3. **Ideate** — 3-5 concepts, ask the user directly in chat and wait for the answer before continuing
-4. **Design** — Use the `brand` skill, then the `design-system` skill, then choose `ui-ux-pro-max` when picking styles/palettes/fonts or `frontend-design` (if available) when executing the layout; HTML per idea × size
-5. **Export** — `chrome-devtools` or Playwright screenshot at exact px (2x deviceScaleFactor)
-6. **Verify** — Use Chrome MCP or `chrome-devtools` skill to visually inspect exported designs; fix layout/styling issues and re-export
-7. **Report** — Summary to `plans/reports/` with design decisions
-8. **Organize** — Invoke `assets-organizing` skill to sort output files and reports
+1. **Analyze** — Parse prompt: subject, platforms, style, brand context, content elements
+2. **Ideate** — 3-5 concepts, ask the user directly in chat and wait for the answer before continuing
+3. **Design** — Use the `brand` skill, then the `design-system` skill, then choose `ui-ux-pro-max` when picking styles/palettes/fonts or `frontend-design` (if available) when executing the layout; HTML per idea × size
+4. **Export** — Run `python .agents/skills/banner-design/scripts/export-png.py` at exact platform px (`--scale 2`)
+5. **Verify** — Open each exported PNG, visually inspect layout/typography/contrast, fix HTML and re-export if needed
 
 ### Social Photos: Key Sizes
 
@@ -239,5 +236,5 @@ pip install google-genai pillow
 
 ## Integration
 
-**External sub-skills:** brand, design-system, ui-styling
-**Related Skills:** frontend-design, ui-ux-pro-max, ai-multimodal, chrome-devtools
+**Sibling skills in `.agents/skills/`:** `brand`, `design-system`, `ui-styling`, `slides`, `banner-design`, `ui-ux-pro-max`
+**Optional skill (if available):** `frontend-design`
