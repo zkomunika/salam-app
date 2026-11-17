@@ -32,7 +32,7 @@ class IzinFormValidatorTest {
     }
 
     @Test
-    fun menolakLebihTigaHariTanpaTanggalAtauTidakSetelahPulangTambahTiga() {
+    fun menolakLebihTigaHariTanpaTanggalAtauTidakSetelahHariKetiga() {
         val e1 = IzinFormValidator.validate(
             validBase.copy(batasJenis = BatasJenis.LEBIH_3_HARI, tanggalBatasPilihan = null)
         )
@@ -41,7 +41,7 @@ class IzinFormValidatorTest {
         val e2 = IzinFormValidator.validate(
             validBase.copy(
                 batasJenis = BatasJenis.LEBIH_3_HARI,
-                tanggalBatasPilihan = LocalDate.of(2026, 11, 4)
+                tanggalBatasPilihan = LocalDate.of(2026, 11, 3)
             )
         )
         assertTrue(e2.containsKey(FormField.BATAS_TANGGAL))
@@ -49,7 +49,7 @@ class IzinFormValidatorTest {
         val e3 = IzinFormValidator.validate(
             validBase.copy(
                 batasJenis = BatasJenis.LEBIH_3_HARI,
-                tanggalBatasPilihan = LocalDate.of(2026, 11, 5)
+                tanggalBatasPilihan = LocalDate.of(2026, 11, 4)
             )
         )
         assertTrue(e3.isEmpty())
@@ -74,10 +74,10 @@ class IzinFormValidatorTest {
             batasJenis = BatasJenis.HARI_3
         )
         val preview = BatasPreviewer.of(s, LocalDate.of(2026, 11, 5))
-        assertEquals(BatasPreview(LocalDate.of(2026, 10, 31), 5), preview)
+        assertEquals(BatasPreview(LocalDate.of(2026, 10, 30), 6), preview)
 
-        val belumLewat = BatasPreviewer.of(validBase, LocalDate.of(2026, 11, 4))
-        assertEquals(BatasPreview(LocalDate.of(2026, 11, 4), 0), belumLewat)
+        val belumLewat = BatasPreviewer.of(validBase, LocalDate.of(2026, 11, 3))
+        assertEquals(BatasPreview(LocalDate.of(2026, 11, 3), 0), belumLewat)
 
         val belumCukup = BatasPreviewer.of(
             validBase.copy(batasJenis = BatasJenis.LEBIH_3_HARI, tanggalBatasPilihan = null),

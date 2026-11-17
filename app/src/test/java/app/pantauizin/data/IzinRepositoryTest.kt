@@ -93,7 +93,7 @@ class IzinRepositoryTest {
     fun tanggalPulangLampauDiterimaDanBatasAwalBenar() = runTest {
         val r = repo.tambah(input(pulang = LocalDate.of(2026, 10, 20), batas = BatasJenis.HARI_2)) as SaveIzinResult.Ok
         val view = repo.get(r.id)!!
-        assertEquals(LocalDate.of(2026, 10, 22), view.batasAwal)
+        assertEquals(LocalDate.of(2026, 10, 21), view.batasAwal)
         assertEquals("6281234567890", view.noWaWali)
     }
 
@@ -106,7 +106,7 @@ class IzinRepositoryTest {
         assertEquals(SaveIzinResult.Ok(r.id), ubahRes)
 
         val view = repo.get(r.id)!!
-        assertEquals(LocalDate.of(2026, 11, 5), view.batasAwal)
+        assertEquals(LocalDate.of(2026, 11, 4), view.batasAwal)
         assertNull(view.noWaWali)
         assertEquals(1, view.konfirmasi.size)
         assertEquals("Masih sakit", view.konfirmasi[0].catatan)
@@ -121,7 +121,7 @@ class IzinRepositoryTest {
         )
         assertEquals(
             SaveIzinResult.BatasTidakValid,
-            repo.tambah(input(pulang = LocalDate.of(2026, 11, 1), batas = BatasJenis.LEBIH_3_HARI, pilihan = LocalDate.of(2026, 11, 4)))
+            repo.tambah(input(pulang = LocalDate.of(2026, 11, 1), batas = BatasJenis.LEBIH_3_HARI, pilihan = LocalDate.of(2026, 11, 3)))
         )
     }
 

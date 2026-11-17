@@ -31,7 +31,7 @@ object IzinFormValidator {
             try {
                 DeadlineCalculator.batasAwal(s.tanggalPulang, batas, s.tanggalBatasPilihan)
             } catch (_: IllegalArgumentException) {
-                errors[FormField.BATAS_TANGGAL] = "Tanggal kembali harus setelah tanggal pulang + 3 hari"
+                errors[FormField.BATAS_TANGGAL] = "Tanggal kembali harus lebih dari 3 hari dari tanggal pulang"
             }
         }
         if (PhoneNumberNormalizer.normalize(s.noWa) is PhoneResult.Invalid) {

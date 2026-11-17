@@ -470,7 +470,7 @@ fun IzinFormScreen(
 
     if (showBatasDatePicker) {
         LocalDatePickerDialog(
-            initialDate = state.form.tanggalBatasPilihan ?: state.form.tanggalPulang.plusDays(4),
+            initialDate = state.form.tanggalBatasPilihan ?: state.form.tanggalPulang.plusDays(3),
             onDismiss = { showBatasDatePicker = false },
             onConfirm = { picked ->
                 viewModel.ubahTanggalBatasPilihan(picked)
