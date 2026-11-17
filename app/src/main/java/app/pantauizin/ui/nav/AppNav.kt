@@ -323,7 +323,10 @@ fun AppNav(
             when (currentTab) {
                 MainTab.IZIN -> {
                     val vm = remember(container) {
-                        IzinListViewModel(izinRepo = container.izinRepository)
+                        IzinListViewModel(
+                            izinRepo = container.izinRepository,
+                            santriRepo = container.santriRepository
+                        )
                     }
                     IzinListScreen(
                         viewModel = vm,

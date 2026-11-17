@@ -35,12 +35,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -85,9 +89,13 @@ fun IzinListScreen(
 ) {
     val currentFilter by viewModel.filter.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val kamarFilter by viewModel.kamarFilter.collectAsState()
+    val kamarOptions by viewModel.kamarOptions.collectAsState()
     val filterCounts by viewModel.filterCounts.collectAsState()
     val items by viewModel.items.collectAsState()
     val scope = rememberCoroutineScope()
+
+    var kamarExpanded by remember { mutableStateOf(false) }
 
     var dialogTandaiKembaliIzinId by remember { mutableStateOf<Long?>(null) }
     var dialogBatalKembaliIzinId by remember { mutableStateOf<Long?>(null) }
@@ -132,6 +140,46 @@ fun IzinListScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            ExposedDropdownMenuBox(
+                expanded = kamarExpanded,
+                onExpandedChange = { kamarExpanded = !kamarExpanded }
+            ) {
+                OutlinedTextField(
+                    value = kamarFilter?.let { "Kamar $it" } ?: "Semua kamar",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Filter kamar") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kamarExpanded) },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = kamarExpanded,
+                    onDismissRequest = { kamarExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Semua kamar") },
+                        onClick = {
+                            viewModel.pilihKamarFilter(null)
+                            kamarExpanded = false
+                        }
+                    )
+                    kamarOptions.forEach { kamar ->
+                        DropdownMenuItem(
+                            text = { Text("Kamar $kamar") },
+                            onClick = {
+                                viewModel.pilihKamarFilter(kamar)
+                                kamarExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -155,7 +203,7 @@ fun IzinListScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (items.isEmpty()) {
-                val hasActiveFilter = searchQuery.isNotBlank() || currentFilter != IzinFilter.SEMUA
+                val hasActiveFilter = searchQuery.isNotBlank() || currentFilter != IzinFilter.SEMUA || kamarFilter != null
                 EmptyStateBox(
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     title = if (hasActiveFilter) "Tidak ada izin yang cocok" else "Belum ada data izin",
@@ -169,6 +217,7 @@ fun IzinListScreen(
                         {
                             viewModel.ubahSearchQuery("")
                             viewModel.pilihFilter(IzinFilter.SEMUA)
+                            viewModel.pilihKamarFilter(null)
                         }
                     } else {
                         onAddIzin
