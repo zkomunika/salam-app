@@ -158,5 +158,24 @@ class IzinRepository(
             izinDao.get(izinId)?.let { syncManager?.uploadIzin(it) }
         } catch (_: Exception) {}
     }
+
+    suspend fun recalculateBatasInklusif(): Int {
+        val list = izinDao.getAllEntities()
+        var updatedCount = 0
+        for (item in list) {
+            if (item.batasJenis == BatasJenis.HARI_1 || item.batasJenis == BatasJenis.HARI_2 || item.batasJenis == BatasJenis.HARI_3) {
+                val newBatas = DeadlineCalculator.batasAwal(item.tanggalPulang, item.batasJenis)
+                if (newBatas != item.batasAwal) {
+                    val updated = item.copy(batasAwal = newBatas)
+                    izinDao.update(updated)
+                    try {
+                        izinDao.get(item.id)?.let { syncManager?.uploadIzin(it) }
+                    } catch (_: Exception) {}
+                    updatedCount++
+                }
+            }
+        }
+        return updatedCount
+    }
 }
 

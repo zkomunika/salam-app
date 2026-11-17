@@ -56,6 +56,9 @@ interface IzinDao {
     @Transaction
     @Query("SELECT * FROM izin WHERE id = :id LIMIT 1")
     suspend fun get(id: Long): IzinWithKonfirmasi?
+
+    @Query("SELECT * FROM izin")
+    suspend fun getAllEntities(): List<IzinEntity>
 }
 
 @Dao

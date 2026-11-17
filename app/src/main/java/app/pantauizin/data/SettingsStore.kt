@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.pantauizin.domain.DefaultTemplates
 import app.pantauizin.domain.TemplateVariant
 import app.pantauizin.notify.SweepSource
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.LocalDate
@@ -103,6 +105,15 @@ class SettingsStore(context: Context) {
         }
     }
 
+    suspend fun isBatasInklusifRecalculated(): Boolean =
+        dataStore.data.first()[KEY_BATAS_INKLUSIF_RECALCULATED] ?: false
+
+    suspend fun setBatasInklusifRecalculated(done: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_BATAS_INKLUSIF_RECALCULATED] = done
+        }
+    }
+
     companion object {
         val DEFAULT_JAM: LocalTime = LocalTime.of(8, 0)
         private val KEY_JAM_PENGINGAT = stringPreferencesKey("jam_pengingat")
@@ -113,6 +124,7 @@ class SettingsStore(context: Context) {
         private val KEY_LAST_RUN_SOURCE = stringPreferencesKey("last_run_source")
         private val KEY_LAST_ALARM_FIRED = stringPreferencesKey("last_alarm_fired")
         private val KEY_NEXT_ALARM = stringPreferencesKey("next_alarm")
+        private val KEY_BATAS_INKLUSIF_RECALCULATED = booleanPreferencesKey("batas_inklusif_recalculated_v1")
 
         private val stores = ConcurrentHashMap<String, DataStore<Preferences>>()
 

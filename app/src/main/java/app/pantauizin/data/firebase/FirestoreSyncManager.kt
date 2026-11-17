@@ -10,6 +10,7 @@ import app.pantauizin.data.KonfirmasiEntity
 import app.pantauizin.data.SantriEntity
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
+import app.pantauizin.domain.DeadlineCalculator
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -184,14 +185,22 @@ class FirestoreSyncManager(
             cloudIds.add(fsIzin.id)
             val local = izinDao.get(fsIzin.id)
 
+            val tglPulang = parseLocalDate(fsIzin.tanggalPulang) ?: LocalDate.now()
+            val bJenis = parseBatas(fsIzin.batasJenis)
+            val bAwal = if (bJenis == BatasJenis.HARI_1 || bJenis == BatasJenis.HARI_2 || bJenis == BatasJenis.HARI_3) {
+                DeadlineCalculator.batasAwal(tglPulang, bJenis)
+            } else {
+                parseLocalDate(fsIzin.batasAwal) ?: LocalDate.now()
+            }
+
             val entity = IzinEntity(
                 id = fsIzin.id,
                 santriId = fsIzin.santriId,
-                tanggalPulang = parseLocalDate(fsIzin.tanggalPulang) ?: LocalDate.now(),
+                tanggalPulang = tglPulang,
                 alasanJenis = parseAlasan(fsIzin.alasanJenis),
                 alasanDetail = fsIzin.alasanDetail,
-                batasJenis = parseBatas(fsIzin.batasJenis),
-                batasAwal = parseLocalDate(fsIzin.batasAwal) ?: LocalDate.now(),
+                batasJenis = bJenis,
+                batasAwal = bAwal,
                 noWaWali = fsIzin.noWaWali,
                 tanggalKembali = parseLocalDate(fsIzin.tanggalKembali),
                 dibuatPada = if (fsIzin.dibuatPada > 0) Instant.ofEpochMilli(fsIzin.dibuatPada) else Instant.now()

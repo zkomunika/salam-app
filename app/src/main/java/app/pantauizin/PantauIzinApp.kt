@@ -37,6 +37,12 @@ class PantauIzinApp : Application(), SweepRunnerProvider {
     suspend fun runStartupTasks() {
         container.syncManager.startRealtimeSync(appScope)
         container.santriSeeder.seedIfEmpty()
+        try {
+            if (!container.settingsStore.isBatasInklusifRecalculated()) {
+                container.izinRepository.recalculateBatasInklusif()
+                container.settingsStore.setBatasInklusifRecalculated(true)
+            }
+        } catch (_: Exception) {}
         SweepWorker.enqueue(this)
         container.sweepRunner.runIfDue(SweepSource.APP_OPEN)
     }

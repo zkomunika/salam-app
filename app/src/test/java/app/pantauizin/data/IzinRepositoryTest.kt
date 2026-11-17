@@ -160,5 +160,34 @@ class IzinRepositoryTest {
         }
         assertTrue(repo.get(r.id)!!.konfirmasi.isEmpty())
     }
+
+    @Test
+    fun recalculateBatasInklusifMemperbaruiBatasAwalLamaKeRumusBaru() = runTest {
+        // Simulasi data lama yang tersimpan dengan batasAwal rumus lama (13 + 3 = 16)
+        val id = db.izinDao().insert(
+            IzinEntity(
+                santriId = 1L,
+                tanggalPulang = LocalDate.of(2026, 11, 13),
+                alasanJenis = AlasanJenis.LAIN_LAIN,
+                alasanDetail = "Almer izin pulang",
+                batasJenis = BatasJenis.HARI_3,
+                batasAwal = LocalDate.of(2026, 11, 16), // Rumus lama
+                noWaWali = "628123456789",
+                tanggalKembali = null,
+                dibuatPada = java.time.Instant.now()
+            )
+        )
+
+        val updated = repo.recalculateBatasInklusif()
+        assertEquals(1, updated)
+
+        val view = repo.get(id)!!
+        // Dengan rumus baru inklusif: 13, 14, 15 -> batasAwal = 15 Nov
+        assertEquals(LocalDate.of(2026, 11, 15), view.batasAwal)
+
+        // Dipanggil kedua kali tidak perlu update lagi (idempotent)
+        val secondRun = repo.recalculateBatasInklusif()
+        assertEquals(0, secondRun)
+    }
 }
 
