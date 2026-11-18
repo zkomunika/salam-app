@@ -134,14 +134,34 @@ class AppUpdateManager(
     /**
      * Mengunduh APK dari URL langsung ke folder cache/updates.
      */
+    private fun updatesDir(): File = File(context.cacheDir, "updates").apply { mkdirs() }
+
+    private fun isApkFile(f: File): Boolean {
+        if (!f.exists() || f.length() < 1024) return false
+        val header = ByteArray(2)
+        f.inputStream().use { if (it.read(header) < 2) return false }
+        return header[0] == 0x50.toByte() && header[1] == 0x4B.toByte()
+    }
+
+    /**
+     * APK pembaruan yang sudah selesai diunduh untuk versi tertentu (bertahan walau app
+     * di-restart Android saat user mengaktifkan izin "pasang dari sumber ini").
+     */
+    fun cachedApk(versionCode: Int): File? {
+        val f = File(updatesDir(), "salam-update-$versionCode.apk")
+        return if (isApkFile(f)) f else null
+    }
+
     suspend fun downloadApk(
         apkUrl: String,
+        versionCode: Int,
         onProgress: (percent: Int) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
-            val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val outFile = File(updatesDir, "salam-update.apk")
-            if (outFile.exists()) outFile.delete()
+            val updatesDir = updatesDir()
+            updatesDir.listFiles()?.forEach { it.delete() }
+            val finalFile = File(updatesDir, "salam-update-$versionCode.apk")
+            val outFile = File(updatesDir, "salam-update-$versionCode.apk.part")
 
             var currentUrl = apkUrl.trim()
             var connection: HttpURLConnection? = null
@@ -207,8 +227,12 @@ class AppUpdateManager(
                 )
             }
 
+            if (!outFile.renameTo(finalFile)) {
+                outFile.delete()
+                return@withContext Result.failure(IllegalStateException("Gagal menyimpan berkas pembaruan"))
+            }
             onProgress(100)
-            Result.success(outFile)
+            Result.success(finalFile)
         } catch (e: Exception) {
             Result.failure(e)
         }

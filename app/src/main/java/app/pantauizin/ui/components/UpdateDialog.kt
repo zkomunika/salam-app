@@ -13,7 +13,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,9 +42,23 @@ fun UpdateDialog(
     val scope = rememberCoroutineScope()
     var isDownloading by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
-    var downloadedFile by remember { mutableStateOf<File?>(null) }
+    var downloadedFile by remember {
+        mutableStateOf<File?>(updateManager.cachedApk(updateInfo.latestVersionCode))
+    }
     var errorText by remember { mutableStateOf<String?>(null) }
     var needsInstallPermission by remember { mutableStateOf(false) }
+
+    // Segarkan status izin setiap kali user kembali dari layar Setelan.
+    var resumeTick by remember { mutableIntStateOf(0) }
+    val lifecycle = (LocalContext.current as? ComponentActivity)?.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumeTick++
+        }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer) }
+    }
+    val canInstall = resumeTick.let { updateManager.canInstallPackages() }
 
     AlertDialog(
         onDismissRequest = {
@@ -65,6 +84,14 @@ fun UpdateDialog(
                     Text(
                         text = updateInfo.releaseNotes,
                         style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                if (downloadedFile != null && canInstall) {
+                    Text(
+                        text = "Pembaruan sudah diunduh. Ketuk \"Pasang Sekarang\", lalu pilih Perbarui/Install.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -99,7 +126,7 @@ fun UpdateDialog(
             }
         },
         confirmButton = {
-            if (downloadedFile != null && !updateManager.canInstallPackages()) {
+            if (downloadedFile != null && !canInstall) {
                 Button(
                     onClick = {
                         needsInstallPermission = true
@@ -124,7 +151,7 @@ fun UpdateDialog(
                         errorText = null
                         progress = 0
                         scope.launch {
-                            val res = updateManager.downloadApk(updateInfo.apkUrl) { pct ->
+                            val res = updateManager.downloadApk(updateInfo.apkUrl, updateInfo.latestVersionCode) { pct ->
                                 progress = pct
                             }
                             isDownloading = false
