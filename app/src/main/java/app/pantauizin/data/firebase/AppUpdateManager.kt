@@ -7,9 +7,11 @@ import android.os.Build
 import android.provider.Settings
 import androidx.annotation.Keep
 import androidx.core.content.FileProvider
+import androidx.core.content.pm.PackageInfoCompat
 import app.pantauizin.BuildConfig
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -27,6 +29,54 @@ data class AppUpdateInfo(
     val forceUpdate: Boolean = false
 )
 
+data class ApkMetadata(
+    val packageName: String,
+    val versionCode: Int,
+    val versionName: String
+)
+
+sealed interface ApkValidationResult {
+    data object Valid : ApkValidationResult
+    data class AlreadyInstalled(val apkVersionCode: Int, val apkVersionName: String) : ApkValidationResult
+    data class WrongPackage(val actualPackage: String) : ApkValidationResult
+    data object Unreadable : ApkValidationResult
+}
+
+class AlreadyUpToDateApkException(message: String) : IllegalStateException(message)
+
+object UpdatePolicy {
+    fun isUpdateAvailable(
+        currentVersionCode: Int,
+        latestVersionCode: Int,
+        apkUrl: String
+    ): Boolean = latestVersionCode > currentVersionCode && apkUrl.isNotBlank()
+
+    fun validateApk(
+        meta: ApkMetadata?,
+        expectedPackage: String,
+        currentVersionCode: Int
+    ): ApkValidationResult {
+        if (meta == null) return ApkValidationResult.Unreadable
+        if (meta.packageName != expectedPackage) return ApkValidationResult.WrongPackage(meta.packageName)
+        if (meta.versionCode <= currentVersionCode) {
+            return ApkValidationResult.AlreadyInstalled(meta.versionCode, meta.versionName)
+        }
+        return ApkValidationResult.Valid
+    }
+
+    fun parseCachedApkVersionCode(fileName: String): Int? {
+        val match = Regex("^salam-update-(\\d+)\\.apk$").matchEntire(fileName) ?: return null
+        return match.groupValues[1].toIntOrNull()
+    }
+
+    fun defaultPublishVersionCode(currentVersionCode: Int): Int = currentVersionCode
+
+    fun defaultPublishVersionName(currentVersionName: String): String = currentVersionName
+
+    fun defaultApkUrl(versionName: String): String =
+        "https://github.com/zkomunika/salam-app/releases/latest/download/SALAM_APP_v${versionName.trim()}.apk"
+}
+
 class AppUpdateManager(
     private val context: Context,
     private val firestoreProvider: () -> FirebaseFirestore? = {
@@ -41,8 +91,21 @@ class AppUpdateManager(
 ) {
     private val firestore: FirebaseFirestore? get() = firestoreProvider()
 
-    val currentVersionCode: Int get() = BuildConfig.VERSION_CODE
-    val currentVersionName: String get() = BuildConfig.VERSION_NAME
+    val currentVersionCode: Int
+        get() = try {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            PackageInfoCompat.getLongVersionCode(info).toInt()
+        } catch (_: Exception) {
+            BuildConfig.VERSION_CODE
+        }
+
+    val currentVersionName: String
+        get() = try {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.versionName?.takeIf { it.isNotBlank() } ?: BuildConfig.VERSION_NAME
+        } catch (_: Exception) {
+            BuildConfig.VERSION_NAME
+        }
 
     fun suggestNextVersionName(): String {
         val parts = currentVersionName.split(".")
@@ -61,7 +124,12 @@ class AppUpdateManager(
     suspend fun getLatestConfig(): AppUpdateInfo? = withContext(Dispatchers.IO) {
         val db = firestore ?: return@withContext null
         try {
-            val snap = db.collection("app_config").document("update").get().await()
+            val docRef = db.collection("app_config").document("update")
+            val snap = try {
+                docRef.get(Source.SERVER).await()
+            } catch (_: Exception) {
+                docRef.get().await()
+            }
             if (!snap.exists()) return@withContext null
             AppUpdateInfo(
                 latestVersionCode = (snap.getLong("latestVersionCode") ?: 0L).toInt(),
@@ -77,12 +145,19 @@ class AppUpdateManager(
 
     /**
      * Mengecek apakah ada versi baru di Firestore (`app_config/update`).
+     * Mengutamakan data langsung dari server agar tidak terjebak cache lama.
      * Mengembalikan AppUpdateInfo jika ada versi lebih baru, atau null jika sudah terbaru.
      */
     suspend fun checkForUpdate(): Result<AppUpdateInfo?> = withContext(Dispatchers.IO) {
+        cleanupStaleApks()
         val db = firestore ?: return@withContext Result.failure(IllegalStateException("Firebase belum terhubung"))
         try {
-            val snap = db.collection("app_config").document("update").get().await()
+            val docRef = db.collection("app_config").document("update")
+            val snap = try {
+                docRef.get(Source.SERVER).await()
+            } catch (_: Exception) {
+                docRef.get().await()
+            }
             if (!snap.exists()) {
                 return@withContext Result.success(null)
             }
@@ -92,7 +167,7 @@ class AppUpdateManager(
             val notes = snap.getString("releaseNotes") ?: ""
             val force = snap.getBoolean("forceUpdate") ?: false
 
-            if (latestCode > currentVersionCode && apkUrl.isNotBlank()) {
+            if (UpdatePolicy.isUpdateAvailable(currentVersionCode, latestCode, apkUrl)) {
                 Result.success(
                     AppUpdateInfo(
                         latestVersionCode = latestCode,
@@ -143,13 +218,57 @@ class AppUpdateManager(
         return header[0] == 0x50.toByte() && header[1] == 0x4B.toByte()
     }
 
+    fun inspectApk(apkFile: File): ApkMetadata? = try {
+        val archiveInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+        if (archiveInfo != null) {
+            ApkMetadata(
+                packageName = archiveInfo.packageName ?: "",
+                versionCode = PackageInfoCompat.getLongVersionCode(archiveInfo).toInt(),
+                versionName = archiveInfo.versionName ?: ""
+            )
+        } else null
+    } catch (_: Exception) {
+        null
+    }
+
+    fun cleanupStaleApks(installedVersionCode: Int = currentVersionCode) {
+        val dir = updatesDir()
+        dir.listFiles()?.forEach { file ->
+            val name = file.name
+            val shouldDelete = when {
+                name.endsWith(".part") -> true
+                name == "salam-update.apk" -> true
+                else -> {
+                    val v = UpdatePolicy.parseCachedApkVersionCode(name)
+                    v != null && v <= installedVersionCode
+                }
+            }
+            if (shouldDelete) {
+                file.delete()
+            }
+        }
+    }
+
     /**
      * APK pembaruan yang sudah selesai diunduh untuk versi tertentu (bertahan walau app
      * di-restart Android saat user mengaktifkan izin "pasang dari sumber ini").
      */
     fun cachedApk(versionCode: Int): File? {
+        if (versionCode <= currentVersionCode) {
+            cleanupStaleApks()
+            return null
+        }
         val f = File(updatesDir(), "salam-update-$versionCode.apk")
-        return if (isApkFile(f)) f else null
+        if (!isApkFile(f)) {
+            if (f.exists()) f.delete()
+            return null
+        }
+        val meta = inspectApk(f)
+        if (meta != null && UpdatePolicy.validateApk(meta, context.packageName, currentVersionCode) !is ApkValidationResult.Valid) {
+            f.delete()
+            return null
+        }
+        return f
     }
 
     suspend fun downloadApk(
@@ -227,6 +346,28 @@ class AppUpdateManager(
                 )
             }
 
+            // Validasi versi APK yang terunduh agar tidak memasang versi lama/sama berulang kali
+            val meta = inspectApk(outFile)
+            if (meta != null) {
+                when (val validation = UpdatePolicy.validateApk(meta, context.packageName, currentVersionCode)) {
+                    is ApkValidationResult.WrongPackage -> {
+                        outFile.delete()
+                        return@withContext Result.failure(
+                            IllegalStateException("Berkas APK tidak cocok dengan aplikasi SALAM APP.")
+                        )
+                    }
+                    is ApkValidationResult.AlreadyInstalled -> {
+                        outFile.delete()
+                        return@withContext Result.failure(
+                            AlreadyUpToDateApkException(
+                                "Aplikasi Anda (v$currentVersionName) sudah sama dengan atau lebih baru dari APK di server (v${validation.apkVersionName})."
+                            )
+                        )
+                    }
+                    ApkValidationResult.Valid, ApkValidationResult.Unreadable -> Unit
+                }
+            }
+
             if (!outFile.renameTo(finalFile)) {
                 outFile.delete()
                 return@withContext Result.failure(IllegalStateException("Gagal menyimpan berkas pembaruan"))
@@ -246,7 +387,7 @@ class AppUpdateManager(
         }
     }
 
-    fun openInstallPermissionSettings() {
+    fun openInstallPermissionSettings(): Result<Unit> = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                 data = Uri.parse("package:${context.packageName}")
@@ -256,7 +397,7 @@ class AppUpdateManager(
         }
     }
 
-    fun installApk(apkFile: File) {
+    fun installApk(apkFile: File): Result<Unit> = runCatching {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -269,7 +410,7 @@ class AppUpdateManager(
         context.startActivity(intent)
     }
 
-    fun openInBrowser(url: String) {
+    fun openInBrowser(url: String): Result<Unit> = runCatching {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url.trim())).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }

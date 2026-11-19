@@ -16,6 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.pantauizin.data.firebase.AlreadyUpToDateApkException
 import app.pantauizin.data.firebase.AppUpdateInfo
 import app.pantauizin.data.firebase.AppUpdateManager
 import kotlinx.coroutines.launch
@@ -47,6 +49,9 @@ fun UpdateDialog(
     }
     var errorText by remember { mutableStateOf<String?>(null) }
     var needsInstallPermission by remember { mutableStateOf(false) }
+    var canForceBypass by remember { mutableStateOf(false) }
+    var waitingPermissionToInstall by remember { mutableStateOf(false) }
+    var installerLaunched by remember { mutableStateOf(false) }
 
     // Segarkan status izin setiap kali user kembali dari layar Setelan.
     var resumeTick by remember { mutableIntStateOf(0) }
@@ -60,9 +65,20 @@ fun UpdateDialog(
     }
     val canInstall = resumeTick.let { updateManager.canInstallPackages() }
 
+    LaunchedEffect(resumeTick) {
+        if (waitingPermissionToInstall && canInstall && downloadedFile != null) {
+            waitingPermissionToInstall = false
+            needsInstallPermission = false
+            installerLaunched = true
+            updateManager.installApk(downloadedFile!!).onFailure { err ->
+                errorText = err.message ?: "Gagal membuka pemasang APK"
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = {
-            if (!updateInfo.forceUpdate && !isDownloading) {
+            if ((!updateInfo.forceUpdate || canForceBypass) && !isDownloading) {
                 onDismiss()
             }
         },
@@ -89,7 +105,11 @@ fun UpdateDialog(
 
                 if (downloadedFile != null && canInstall) {
                     Text(
-                        text = "Pembaruan sudah diunduh. Ketuk \"Pasang Sekarang\", lalu pilih Perbarui/Install.",
+                        text = if (installerLaunched && errorText == null) {
+                            "Jika layar pemasangan tertutup atau dibatalkan, ketuk \"Pasang Sekarang\" lalu pilih Perbarui/Install."
+                        } else {
+                            "Pembaruan sudah diunduh. Ketuk \"Pasang Sekarang\", lalu pilih Perbarui/Install."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -130,7 +150,10 @@ fun UpdateDialog(
                 Button(
                     onClick = {
                         needsInstallPermission = true
-                        updateManager.openInstallPermissionSettings()
+                        waitingPermissionToInstall = true
+                        updateManager.openInstallPermissionSettings().onFailure { err ->
+                            errorText = err.message ?: "Gagal membuka pengaturan izin"
+                        }
                     }
                 ) {
                     Text("Buka Setelan Izin")
@@ -138,7 +161,11 @@ fun UpdateDialog(
             } else if (downloadedFile != null) {
                 Button(
                     onClick = {
-                        updateManager.installApk(downloadedFile!!)
+                        errorText = null
+                        installerLaunched = true
+                        updateManager.installApk(downloadedFile!!).onFailure { err ->
+                            errorText = err.message ?: "Gagal membuka pemasang APK"
+                        }
                     }
                 ) {
                     Text("Pasang Sekarang")
@@ -159,14 +186,23 @@ fun UpdateDialog(
                                 onSuccess = { file ->
                                     downloadedFile = file
                                     if (updateManager.canInstallPackages()) {
-                                        updateManager.installApk(file)
+                                        installerLaunched = true
+                                        updateManager.installApk(file).onFailure { err ->
+                                            errorText = err.message ?: "Gagal membuka pemasang APK"
+                                        }
                                     } else {
                                         needsInstallPermission = true
-                                        updateManager.openInstallPermissionSettings()
+                                        waitingPermissionToInstall = true
+                                        updateManager.openInstallPermissionSettings().onFailure { err ->
+                                            errorText = err.message ?: "Gagal membuka pengaturan izin"
+                                        }
                                     }
                                 },
                                 onFailure = { err ->
                                     errorText = err.message ?: "Gagal mengunduh pembaruan"
+                                    if (err is AlreadyUpToDateApkException) {
+                                        canForceBypass = true
+                                    }
                                 }
                             )
                         }
@@ -178,14 +214,22 @@ fun UpdateDialog(
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (errorText != null) {
+                if ((errorText != null && !canForceBypass) || installerLaunched) {
                     OutlinedButton(
-                        onClick = { updateManager.openInBrowser(updateInfo.apkUrl) }
+                        onClick = {
+                            updateManager.openInBrowser(updateInfo.apkUrl).onFailure { err ->
+                                errorText = err.message ?: "Gagal membuka browser"
+                            }
+                        }
                     ) {
                         Text("Buka di Browser")
                     }
                 }
-                if (!updateInfo.forceUpdate && !isDownloading) {
+                if (canForceBypass && !isDownloading) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Tutup")
+                    }
+                } else if (!updateInfo.forceUpdate && !isDownloading) {
                     TextButton(onClick = onDismiss) {
                         Text("Nanti")
                     }

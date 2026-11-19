@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.pantauizin.data.firebase.UpdatePolicy
 import app.pantauizin.domain.TemplateVariant
 import app.pantauizin.notify.SweepSource
 import app.pantauizin.ui.components.UpdateDialog
@@ -560,39 +561,51 @@ fun PengaturanScreen(
     }
 
     if (showPublishUpdateDialog && viewModel.updateManager != null) {
-        val nextCode = (viewModel.updateManager.currentVersionCode + 1).toString()
-        val nextName = viewModel.updateManager.suggestNextVersionName()
-        var verCodeStr by remember { mutableStateOf(nextCode) }
-        var verNameStr by remember { mutableStateOf(nextName) }
-        var apkUrlStr by remember { mutableStateOf("") }
+        val um = viewModel.updateManager
+        val defaultCode = UpdatePolicy.defaultPublishVersionCode(um.currentVersionCode).toString()
+        val defaultName = UpdatePolicy.defaultPublishVersionName(um.currentVersionName)
+        val defaultUrl = UpdatePolicy.defaultApkUrl(defaultName)
+        var verCodeStr by remember { mutableStateOf(defaultCode) }
+        var verNameStr by remember { mutableStateOf(defaultName) }
+        var apkUrlStr by remember { mutableStateOf(defaultUrl) }
         var notesStr by remember { mutableStateOf("Pembaruan sistem, peningkatan kestabilan, dan perbaikan antarmuka.") }
         var forceChecked by remember { mutableStateOf(false) }
 
         LaunchedEffect(Unit) {
-            val last = viewModel.updateManager.getLatestConfig()
-            if (last != null) {
-                if (last.apkUrl.isNotBlank() && apkUrlStr.isBlank()) {
+            val last = um.getLatestConfig()
+            if (last != null && last.latestVersionCode == um.currentVersionCode) {
+                if (last.apkUrl.isNotBlank()) {
                     apkUrlStr = last.apkUrl
+                }
+                if (last.releaseNotes.isNotBlank()) {
+                    notesStr = last.releaseNotes
                 }
             }
         }
+
+        val typedCode = verCodeStr.toIntOrNull()
 
         AlertDialog(
             onDismissRequest = { showPublishUpdateDialog = false },
             title = { Text("Publikasikan Info Update") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Versi di HP Anda saat ini: v${um.currentVersionName} (kode ${um.currentVersionCode})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     OutlinedTextField(
                         value = verCodeStr,
                         onValueChange = { verCodeStr = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Kode Versi (contoh: 3)") },
+                        label = { Text("Kode Versi (sesuai APK, misal: ${um.currentVersionCode})") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = verNameStr,
                         onValueChange = { verNameStr = it },
-                        label = { Text("Nama Versi (contoh: 1.3)") },
+                        label = { Text("Nama Versi (sesuai APK, misal: ${um.currentVersionName})") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -609,6 +622,13 @@ fun PengaturanScreen(
                         minLines = 2,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    if (typedCode != null && typedCode > um.currentVersionCode) {
+                        Text(
+                            text = "Perhatian: Kode versi ($typedCode) lebih besar dari versi HP Anda (${um.currentVersionCode}). Pastikan APK yang diunggah benar-benar berkode $typedCode, kalau tidak pop-up update akan muncul terus-menerus.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = forceChecked,
