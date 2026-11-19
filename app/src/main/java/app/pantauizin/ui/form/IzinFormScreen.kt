@@ -1,8 +1,10 @@
 package app.pantauizin.ui.form
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,12 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -51,12 +56,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.AlasanJenis
 import app.pantauizin.domain.BatasJenis
 import app.pantauizin.domain.FormField
 import app.pantauizin.domain.MessageTemplateBuilder
+import app.pantauizin.domain.RekapPulangLogic
 import app.pantauizin.ui.components.DatePickerField
 import app.pantauizin.ui.theme.StatusColors
 import kotlinx.coroutines.launch
@@ -123,6 +130,33 @@ fun IzinFormScreen(
         ) {
             // 1. Data Santri & Alasan
             FormSectionCard(title = "1. Data Santri & Alasan") {
+                state.pemberiIzin?.takeIf { it.isNotBlank() }?.let { pengizin ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Pemberi izin: $pengizin",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 ExposedDropdownMenuBox(
                     expanded = kamarExpanded,
                     onExpandedChange = { kamarExpanded = !kamarExpanded }
@@ -164,6 +198,7 @@ fun IzinFormScreen(
                     value = state.namaQuery,
                     onValueChange = { viewModel.ubahNamaQuery(it) },
                     label = { Text("Nama santri") },
+                    placeholder = { Text("Ketik nama atau pilih kamar dulu...") },
                     isError = state.errors.containsKey(FormField.SANTRI),
                     supportingText = {
                         state.errors[FormField.SANTRI]?.let { Text(it) }
@@ -172,6 +207,11 @@ fun IzinFormScreen(
                 )
 
                 if (state.form.santriId == null && state.saranSantri.isNotEmpty()) {
+                    val displayedSaran = if (state.selectedKamar != null) {
+                        state.saranSantri
+                    } else {
+                        state.saranSantri.take(10)
+                    }
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -179,7 +219,8 @@ fun IzinFormScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            state.saranSantri.take(8).forEach { santri ->
+                            displayedSaran.forEach { santri ->
+                                val recentFlag = santri.id in state.recentPulangSantriIds
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -197,6 +238,26 @@ fun IzinFormScreen(
                                             .weight(1f)
                                             .padding(end = 12.dp)
                                     )
+                                    if (recentFlag) {
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(end = 8.dp)
+                                                .background(
+                                                    color = StatusColors.AmberContainer,
+                                                    shape = RoundedCornerShape(6.dp)
+                                                )
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "< 2 bln",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = StatusColors.AmberText,
+                                                softWrap = false,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
                                     Text(
                                         text = "Kamar ${santri.kamar}",
                                         style = MaterialTheme.typography.bodyMedium,
@@ -242,6 +303,66 @@ fun IzinFormScreen(
                             ) {
                                 Text("Buka izin tersebut")
                             }
+                        }
+                    }
+                }
+
+                state.recentPulangWarning?.let { w ->
+                    val alasanLabel = if (w.alasanJenis == AlasanJenis.SAKIT) "Sakit" else "Lain-lain"
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = StatusColors.AmberContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = StatusColors.AmberText
+                                )
+                                Text(
+                                    text = "Belum genap 2 bulan sejak pulang terakhir",
+                                    color = StatusColors.AmberText,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                text = "Terakhir pulang: ${MessageTemplateBuilder.formatTanggal(w.tanggalPulang)} (${RekapPulangLogic.formatSelisihHari(w.hariSejakPulang)})",
+                                color = StatusColors.AmberText,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Alasan: $alasanLabel (${w.alasanDetail})",
+                                color = StatusColors.AmberText,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            if (!w.pemberiIzin.isNullOrBlank()) {
+                                Text(
+                                    text = "Pemberi izin sebelumnya: ${w.pemberiIzin}",
+                                    color = StatusColors.AmberText,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Text(
+                                text = "Batas 2 bulan berikutnya: ${MessageTemplateBuilder.formatTanggal(w.bolehPulangLagiMulai)} (sisa ${w.sisaHariKe2Bulan} hari)",
+                                color = StatusColors.AmberText,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "Hanya pemberitahuan — izin tetap dapat disimpan.",
+                                color = StatusColors.AmberText,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -340,8 +461,7 @@ fun IzinFormScreen(
                         listOf(
                             BatasJenis.HARI_1 to "1 hari",
                             BatasJenis.HARI_2 to "2 hari",
-                            BatasJenis.HARI_3 to "3 hari",
-                            BatasJenis.LEBIH_3_HARI to ">3 hari"
+                            BatasJenis.HARI_3 to "3 hari"
                         ).forEach { (jenis, label) ->
                             DropdownMenuItem(
                                 text = { Text(label) },
@@ -501,6 +621,62 @@ fun IzinFormScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
                     Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (state.showRecentPulangPopup && state.recentPulangWarning != null) {
+        val w = state.recentPulangWarning!!
+        val alasanLabel = if (w.alasanJenis == AlasanJenis.SAKIT) "Sakit" else "Lain-lain"
+        AlertDialog(
+            onDismissRequest = { viewModel.tutupPopupRecentPulang() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = StatusColors.AmberText
+                )
+            },
+            title = { Text("Pemberitahuan: Belum 2 Bulan") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "${state.namaQuery} sudah pernah pulang dalam 2 bulan terakhir.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Terakhir pulang: ${MessageTemplateBuilder.formatTanggal(w.tanggalPulang)} (${RekapPulangLogic.formatSelisihHari(w.hariSejakPulang)})",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Alasan: $alasanLabel — ${w.alasanDetail}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (!w.pemberiIzin.isNullOrBlank()) {
+                        Text(
+                            text = "Pemberi izin: ${w.pemberiIzin}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "Jadwal ideal berikutnya: ${MessageTemplateBuilder.formatTanggal(w.bolehPulangLagiMulai)} (sisa ${w.sisaHariKe2Bulan} hari).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = StatusColors.AmberText
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Catatan: Ini hanya pemberitahuan. Izin tetap dapat disimpan jika diperlukan.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.tutupPopupRecentPulang() }) {
+                    Text("Mengerti, Lanjutkan")
                 }
             }
         )

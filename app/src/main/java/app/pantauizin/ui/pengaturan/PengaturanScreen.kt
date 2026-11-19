@@ -167,9 +167,17 @@ fun PengaturanScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = if (state.currentUser?.isAdmin == true) "Role: Admin Asrama" else "Role: Pengurus",
+                                text = when {
+                                    state.currentUser?.isAdmin == true -> "Role: Admin Asrama"
+                                    state.currentUser?.isPengurusInti == true -> "Role: Pengurus Inti"
+                                    else -> "Role: Anggota (Hanya Baca)"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (state.currentUser?.isAdmin == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (state.currentUser?.canManageIzin == true) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             )
                         }
                     }

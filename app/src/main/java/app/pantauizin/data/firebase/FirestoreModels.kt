@@ -8,18 +8,22 @@ enum class UserRole {
     PENGURUS
 }
 
-private val SANTRI_MANAGER_EMAILS = setOf(
-    "miftahudin@asas.id",
-    "fikrimhilmi@asas.id",
-    "mazkaanggiri@asas.id",
-    "mfajrulhikam@asas.id",
-    "mfikrihambali@asas.id",
-    "mthoriqmusthafa@asas.id",
-    "mohghiyatsmaulanaaripin@asas.id",
-    "akmalmasykurhidayat@asas.id",
-    "mazmanabdulaziz@asas.id",
-    "maulanahasyim@asas.id"
+private val PENGURUS_INTI_MAP = mapOf(
+    "miftahudin@asas.id" to "MIFTAHUDIN",
+    "mthoriqmusthafa@asas.id" to "M THORIQ MUSTHAFA",
+    "mfikrihambali@asas.id" to "M FIKRI HAMBALI",
+    "fikrimhilmi@asas.id" to "FIKRI M HILMI",
+    "mfajrulhikam@asas.id" to "M FAJRUL HIKAM",
+    "maulanahasyim@asas.id" to "MAULANA HASYIM",
+    "mohghiyatsmaulanaaripin@asas.id" to "MOH GHIYATS MAULANA ARIPIN",
+    "mazkaanggiri@asas.id" to "M AZKA ANGGIRI",
+    "mazmanabdulaziz@asas.id" to "M AZMAN ABDUL AZIZ",
+    "akmalmasykurhidayat@asas.id" to "AKMAL MASYKUR HIDAYAT"
 )
+
+internal val PENGURUS_INTI_NAMES: Set<String> = PENGURUS_INTI_MAP.values.toSet()
+
+fun defaultNamaForEmail(email: String): String? = PENGURUS_INTI_MAP[email.trim().lowercase()]
 
 @Keep
 data class UserProfile(
@@ -30,8 +34,18 @@ data class UserProfile(
     val createdAt: Long = System.currentTimeMillis()
 ) {
     val isAdmin: Boolean get() = role.equals(UserRole.ADMIN.name, ignoreCase = true)
+    val isPengurusInti: Boolean
+        get() = email.trim().lowercase() in PENGURUS_INTI_MAP ||
+            nama.trim().uppercase() in PENGURUS_INTI_NAMES
     val canManageSantri: Boolean
-        get() = isAdmin || email.trim().lowercase() in SANTRI_MANAGER_EMAILS
+        get() = isAdmin || isPengurusInti
+    val canManageIzin: Boolean
+        get() = isAdmin || isPengurusInti
+    val displayNama: String
+        get() = nama.trim().ifBlank {
+            defaultNamaForEmail(email)
+                ?: email.substringBefore("@").replaceFirstChar { it.uppercase() }
+        }
 }
 
 @Keep
@@ -55,6 +69,7 @@ data class FirestoreIzin(
     val noWaWali: String? = null,
     val tanggalKembali: String? = null,
     val dibuatPada: Long = 0,
+    val pemberiIzin: String? = null,
     val konfirmasiList: List<FirestoreKonfirmasi> = emptyList(),
     val updatedAt: Long = System.currentTimeMillis()
 )

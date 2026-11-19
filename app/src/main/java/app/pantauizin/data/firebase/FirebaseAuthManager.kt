@@ -113,7 +113,8 @@ class FirebaseAuthManager(
         } else {
             UserRole.PENGURUS.name
         }
-        val defaultName = safeEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
+        val defaultName = defaultNamaForEmail(safeEmail)
+            ?: safeEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
         return UserProfile(
             uid = uid,
             email = safeEmail,

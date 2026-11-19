@@ -19,7 +19,8 @@ data class IzinInput(
     val alasanDetail: String,
     val batasJenis: BatasJenis,
     val tanggalBatasPilihan: LocalDate?,
-    val noWaWali: String?
+    val noWaWali: String?,
+    val pemberiIzin: String? = null
 )
 
 sealed interface SaveIzinResult {
@@ -67,7 +68,8 @@ class IzinRepository(
                 batasAwal = batasAwal,
                 noWaWali = noWa,
                 tanggalKembali = null,
-                dibuatPada = Instant.now()
+                dibuatPada = Instant.now(),
+                pemberiIzin = input.pemberiIzin?.trim()?.takeIf { it.isNotEmpty() }
             )
         )
         try {

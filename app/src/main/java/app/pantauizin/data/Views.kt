@@ -28,7 +28,8 @@ data class IzinView(
     val batasAwal: LocalDate,
     val noWaWali: String?,
     val tanggalKembali: LocalDate?,
-    val konfirmasi: List<KonfirmasiView>
+    val konfirmasi: List<KonfirmasiView>,
+    val pemberiIzin: String? = null
 ) {
     fun toSnapshot(): IzinSnapshot = IzinSnapshot(
         izinId = id,
@@ -72,7 +73,8 @@ internal fun IzinWithKonfirmasi.toView(): IzinView = IzinView(
                 buktiPath = k.buktiPath,
                 dibuatPada = k.dibuatPada
             )
-        }
+        },
+    pemberiIzin = izin.pemberiIzin
 )
 
 internal fun NotifikasiWithSantri.toView(): NotifikasiView = NotifikasiView(

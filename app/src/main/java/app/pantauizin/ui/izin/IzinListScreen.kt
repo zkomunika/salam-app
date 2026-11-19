@@ -85,6 +85,7 @@ fun IzinListScreen(
     onAddIzin: () -> Unit,
     onEditIzin: (Long) -> Unit,
     onOpenKonfirmasi: (Long) -> Unit,
+    canManageIzin: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val currentFilter by viewModel.filter.collectAsState()
@@ -106,12 +107,14 @@ fun IzinListScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddIzin,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Tambah izin")
+            if (canManageIzin) {
+                FloatingActionButton(
+                    onClick = onAddIzin,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Tambah izin")
+                }
             }
         }
     ) { innerPadding ->
@@ -207,20 +210,26 @@ fun IzinListScreen(
                 EmptyStateBox(
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     title = if (hasActiveFilter) "Tidak ada izin yang cocok" else "Belum ada data izin",
-                    subtitle = if (hasActiveFilter) {
-                        "Coba ubah kata kunci pencarian atau pilih kategori lain."
-                    } else {
-                        "Ketuk tombol + di kanan bawah untuk mencatat izin pulang santri."
+                    subtitle = when {
+                        hasActiveFilter -> "Coba ubah kata kunci pencarian atau pilih kategori lain."
+                        canManageIzin -> "Ketuk tombol + di kanan bawah untuk mencatat izin pulang santri."
+                        else -> "Belum ada data izin pulang santri."
                     },
-                    actionLabel = if (hasActiveFilter) "Reset Filter" else "Tambah Izin",
-                    onAction = if (hasActiveFilter) {
-                        {
-                            viewModel.ubahSearchQuery("")
-                            viewModel.pilihFilter(IzinFilter.SEMUA)
-                            viewModel.pilihKamarFilter(null)
+                    actionLabel = when {
+                        hasActiveFilter -> "Reset Filter"
+                        canManageIzin -> "Tambah Izin"
+                        else -> null
+                    },
+                    onAction = when {
+                        hasActiveFilter -> {
+                            {
+                                viewModel.ubahSearchQuery("")
+                                viewModel.pilihFilter(IzinFilter.SEMUA)
+                                viewModel.pilihKamarFilter(null)
+                            }
                         }
-                    } else {
-                        onAddIzin
+                        canManageIzin -> onAddIzin
+                        else -> null
                     }
                 )
             } else {
@@ -232,6 +241,7 @@ fun IzinListScreen(
                     items(items, key = { it.view.id }) { item ->
                         IzinCard(
                             item = item,
+                            canManageIzin = canManageIzin,
                             onToggleKembali = {
                                 if (item.view.tanggalKembali == null) {
                                     dialogTandaiKembaliIzinId = item.view.id
@@ -321,6 +331,7 @@ fun IzinListScreen(
 @Composable
 private fun IzinCard(
     item: IzinListItemUi,
+    canManageIzin: Boolean,
     onToggleKembali: () -> Unit,
     onOpenKonfirmasi: () -> Unit,
     onLihatKonfirmasi: () -> Unit,
@@ -353,18 +364,20 @@ private fun IzinCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                OutlinedButton(
-                    onClick = onEdit,
-                    modifier = Modifier.heightIn(min = 44.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit")
+                if (canManageIzin) {
+                    OutlinedButton(
+                        onClick = onEdit,
+                        modifier = Modifier.heightIn(min = 44.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Edit")
+                    }
                 }
             }
 
@@ -379,6 +392,13 @@ private fun IzinCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (!item.view.pemberiIzin.isNullOrBlank()) {
+                Text(
+                    text = "Pemberi izin: ${item.view.pemberiIzin}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -417,13 +437,14 @@ private fun IzinCard(
                 Row(
                     modifier = Modifier
                         .heightIn(min = 48.dp)
-                        .clickable(onClick = onToggleKembali)
+                        .let { if (canManageIzin) it.clickable(onClick = onToggleKembali) else it }
                         .padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = item.view.tanggalKembali != null,
-                        onCheckedChange = { onToggleKembali() }
+                        enabled = canManageIzin,
+                        onCheckedChange = if (canManageIzin) { { onToggleKembali() } } else null
                     )
                     Text(
                         text = "Sudah kembali",
@@ -431,7 +452,7 @@ private fun IzinCard(
                     )
                 }
 
-                if (item.tampilKotakKonfirmasi) {
+                if (canManageIzin && item.tampilKotakKonfirmasi) {
                     OutlinedButton(
                         onClick = onOpenKonfirmasi,
                         modifier = Modifier.heightIn(min = 48.dp)

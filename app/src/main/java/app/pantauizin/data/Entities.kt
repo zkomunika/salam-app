@@ -46,7 +46,8 @@ data class IzinEntity(
     val batasAwal: LocalDate,
     val noWaWali: String?,
     val tanggalKembali: LocalDate?,
-    val dibuatPada: Instant
+    val dibuatPada: Instant,
+    val pemberiIzin: String? = null
 )
 
 @Entity(

@@ -76,6 +76,7 @@ private val ID_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.fo
 fun TerlambatScreen(
     viewModel: TerlambatViewModel,
     onOpenKonfirmasi: (Long) -> Unit,
+    canManageIzin: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -164,6 +165,7 @@ fun TerlambatScreen(
                 items(items, key = { it.view.id }) { item ->
                     TerlambatCard(
                         item = item,
+                        canManageIzin = canManageIzin,
                         onKirimTemplate = {
                             val action = viewModel.buildSendAction(item)
                             TemplateSender.execute(context, action)
@@ -210,6 +212,7 @@ fun TerlambatScreen(
 @Composable
 private fun TerlambatCard(
     item: TerlambatItemUi,
+    canManageIzin: Boolean,
     onKirimTemplate: () -> Unit,
     onKonfirmasi: () -> Unit,
     onTandaiKembali: () -> Unit
@@ -279,6 +282,14 @@ private fun TerlambatCard(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }
             )
+            if (!item.view.pemberiIzin.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Pemberi izin: ${item.view.pemberiIzin}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             if (item.view.konfirmasi.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -313,30 +324,32 @@ private fun TerlambatCard(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = onKonfirmasi,
-                    modifier = Modifier.heightIn(min = 48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.EventAvailable,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Konfirmasi")
-                }
+                if (canManageIzin) {
+                    OutlinedButton(
+                        onClick = onKonfirmasi,
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EventAvailable,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Konfirmasi")
+                    }
 
-                OutlinedButton(
-                    onClick = onTandaiKembali,
-                    modifier = Modifier.heightIn(min = 48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tandai kembali")
+                    OutlinedButton(
+                        onClick = onTandaiKembali,
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Tandai kembali")
+                    }
                 }
             }
         }

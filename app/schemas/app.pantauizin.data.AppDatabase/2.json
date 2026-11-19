@@ -1,0 +1,315 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "c61120c6a9ff53f3609fc68fa15b3fef",
+    "entities": [
+      {
+        "tableName": "santri",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nama` TEXT NOT NULL COLLATE NOCASE, `kamar` TEXT NOT NULL, `aktif` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nama",
+            "columnName": "nama",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kamar",
+            "columnName": "kamar",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aktif",
+            "columnName": "aktif",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_santri_nama",
+            "unique": true,
+            "columnNames": [
+              "nama"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_santri_nama` ON `${TABLE_NAME}` (`nama`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "izin",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `santriId` INTEGER NOT NULL, `tanggalPulang` INTEGER NOT NULL, `alasanJenis` TEXT NOT NULL, `alasanDetail` TEXT NOT NULL, `batasJenis` TEXT NOT NULL, `batasAwal` INTEGER NOT NULL, `noWaWali` TEXT, `tanggalKembali` INTEGER, `dibuatPada` INTEGER NOT NULL, `pemberiIzin` TEXT, FOREIGN KEY(`santriId`) REFERENCES `santri`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "santriId",
+            "columnName": "santriId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tanggalPulang",
+            "columnName": "tanggalPulang",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alasanJenis",
+            "columnName": "alasanJenis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alasanDetail",
+            "columnName": "alasanDetail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batasJenis",
+            "columnName": "batasJenis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batasAwal",
+            "columnName": "batasAwal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noWaWali",
+            "columnName": "noWaWali",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tanggalKembali",
+            "columnName": "tanggalKembali",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dibuatPada",
+            "columnName": "dibuatPada",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pemberiIzin",
+            "columnName": "pemberiIzin",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_izin_santriId",
+            "unique": false,
+            "columnNames": [
+              "santriId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_izin_santriId` ON `${TABLE_NAME}` (`santriId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "santri",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "santriId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "konfirmasi",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `izinId` INTEGER NOT NULL, `tanggalKembaliBaru` INTEGER, `catatan` TEXT, `buktiPath` TEXT, `dibuatPada` INTEGER NOT NULL, FOREIGN KEY(`izinId`) REFERENCES `izin`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "izinId",
+            "columnName": "izinId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tanggalKembaliBaru",
+            "columnName": "tanggalKembaliBaru",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "catatan",
+            "columnName": "catatan",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "buktiPath",
+            "columnName": "buktiPath",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dibuatPada",
+            "columnName": "dibuatPada",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_konfirmasi_izinId",
+            "unique": false,
+            "columnNames": [
+              "izinId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_konfirmasi_izinId` ON `${TABLE_NAME}` (`izinId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "izin",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "izinId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "notifikasi",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `izinId` INTEGER NOT NULL, `jenis` TEXT NOT NULL, `pesan` TEXT NOT NULL, `tanggalKey` INTEGER NOT NULL, `dibuatPada` INTEGER NOT NULL, `dibaca` INTEGER NOT NULL, FOREIGN KEY(`izinId`) REFERENCES `izin`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "izinId",
+            "columnName": "izinId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jenis",
+            "columnName": "jenis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pesan",
+            "columnName": "pesan",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tanggalKey",
+            "columnName": "tanggalKey",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dibuatPada",
+            "columnName": "dibuatPada",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dibaca",
+            "columnName": "dibaca",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_notifikasi_izinId_tanggalKey",
+            "unique": true,
+            "columnNames": [
+              "izinId",
+              "tanggalKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_notifikasi_izinId_tanggalKey` ON `${TABLE_NAME}` (`izinId`, `tanggalKey`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "izin",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "izinId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c61120c6a9ff53f3609fc68fa15b3fef')"
+    ]
+  }
+}

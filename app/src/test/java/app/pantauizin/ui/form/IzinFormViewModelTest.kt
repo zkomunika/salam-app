@@ -67,6 +67,18 @@ class IzinFormViewModelTest {
         val vm = IzinFormViewModel(santriRepo, izinRepo, editIzinId = null) { LocalDate.of(2026, 11, 5) }
         vm.loadInitial()
 
+        // Awal terbuka (belum pilih kamar / ketik nama): saran harus kosong
+        assertTrue(vm.uiState.value.saranSantri.isEmpty())
+
+        // Ketik sebagian nama: muncul saran
+        vm.ubahNamaQuery("zaky")
+        assertEquals(listOf("ZAKY FAUZI"), vm.uiState.value.saranSantri.map { it.nama })
+
+        // Kosongkan nama (kamar tetap null): saran kosong lagi
+        vm.ubahNamaQuery("")
+        assertTrue(vm.uiState.value.saranSantri.isEmpty())
+
+        // Pilih kamar 10: muncul seluruh santri kamar 10
         vm.pilihKamar("10")
         assertEquals(listOf("RAFI AHMAD"), vm.uiState.value.saranSantri.map { it.nama })
 
@@ -74,6 +86,49 @@ class IzinFormViewModelTest {
         vm.pilihSantri(zakyId)
         assertEquals("11", vm.uiState.value.selectedKamar)
         assertEquals("ZAKY FAUZI", vm.uiState.value.namaQuery)
+        assertTrue(vm.uiState.value.saranSantri.isEmpty())
+    }
+
+    @Test
+    fun memilihSantriBaruPulang2MingguLaluMenampilkanPopupTetapiTidakMengunciSimpanDanCatatPemberiIzin() = runTest {
+        val rLama = izinRepo.tambah(
+            IzinInput(
+                santriId = zakyId,
+                tanggalPulang = LocalDate.of(2026, 11, 5),
+                alasanJenis = AlasanJenis.SAKIT,
+                alasanDetail = "Demam",
+                batasJenis = BatasJenis.HARI_2,
+                tanggalBatasPilihan = null,
+                noWaWali = null,
+                pemberiIzin = "M THORIQ MUSTHAFA"
+            )
+        ) as SaveIzinResult.Ok
+        izinRepo.tandaiKembali(rLama.id, LocalDate.of(2026, 11, 6))
+
+        val vm = IzinFormViewModel(
+            santriRepo = santriRepo,
+            izinRepo = izinRepo,
+            editIzinId = null,
+            pemberiIzinNama = "MIFTAHUDIN"
+        ) { LocalDate.of(2026, 11, 19) }
+        vm.loadInitial()
+        vm.pilihSantri(zakyId)
+
+        val state = vm.uiState.value
+        assertNotNull(state.recentPulangWarning)
+        assertEquals("Demam", state.recentPulangWarning?.alasanDetail)
+        assertTrue(state.showRecentPulangPopup)
+        assertEquals("MIFTAHUDIN", state.pemberiIzin)
+
+        vm.tutupPopupRecentPulang()
+        assertFalse(vm.uiState.value.showRecentPulangPopup)
+
+        // Tetap bisa disimpan meskipun belum genap 2 bulan
+        vm.ubahAlasanDetail("Keperluan mendesak")
+        assertTrue(vm.simpan())
+
+        val terbaru = izinRepo.observe().first().first { it.id != rLama.id }
+        assertEquals("MIFTAHUDIN", terbaru.pemberiIzin)
     }
 
     @Test
@@ -110,11 +165,17 @@ class IzinFormViewModelTest {
                 alasanDetail = "Acara keluarga",
                 batasJenis = BatasJenis.HARI_3,
                 tanggalBatasPilihan = null,
-                noWaWali = "081234567890"
+                noWaWali = "081234567890",
+                pemberiIzin = "MIFTAHUDIN"
             )
         ) as SaveIzinResult.Ok
 
-        val vm = IzinFormViewModel(santriRepo, izinRepo, editIzinId = saved.id) { LocalDate.of(2026, 11, 5) }
+        val vm = IzinFormViewModel(
+            santriRepo = santriRepo,
+            izinRepo = izinRepo,
+            editIzinId = saved.id,
+            pemberiIzinNama = "AKMAL MASYKUR HIDAYAT"
+        ) { LocalDate.of(2026, 11, 5) }
         vm.loadInitial()
 
         val state = vm.uiState.value
@@ -124,11 +185,14 @@ class IzinFormViewModelTest {
         assertEquals("Acara keluarga", state.form.alasanDetail)
         assertEquals(BatasJenis.HARI_3, state.form.batasJenis)
         assertEquals("6281234567890", state.form.noWa)
+        assertEquals("MIFTAHUDIN", state.pemberiIzin)
         assertNull(state.activeIzinIdWarning)
 
         vm.ubahAlasanDetail("Acara nikahan kakak")
         assertTrue(vm.simpan())
-        assertEquals("Acara nikahan kakak", izinRepo.get(saved.id)!!.alasanDetail)
-        assertNotNull(izinRepo.get(saved.id))
+        val updated = izinRepo.get(saved.id)!!
+        assertEquals("Acara nikahan kakak", updated.alasanDetail)
+        assertEquals("MIFTAHUDIN", updated.pemberiIzin)
+        assertNotNull(updated)
     }
 }

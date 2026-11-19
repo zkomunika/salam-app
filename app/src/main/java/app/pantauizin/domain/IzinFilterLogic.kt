@@ -31,7 +31,8 @@ object IzinFilterLogic {
             val matchesQuery = trimmed.isEmpty() ||
                 item.view.nama.contains(trimmed, ignoreCase = true) ||
                 item.view.kamar.contains(trimmed, ignoreCase = true) ||
-                item.view.alasanDetail.contains(trimmed, ignoreCase = true)
+                item.view.alasanDetail.contains(trimmed, ignoreCase = true) ||
+                item.view.pemberiIzin?.contains(trimmed, ignoreCase = true) == true
             matchesFilter && matchesKamar && matchesQuery
         }
     }

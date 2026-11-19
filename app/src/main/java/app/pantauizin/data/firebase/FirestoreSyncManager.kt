@@ -203,7 +203,8 @@ class FirestoreSyncManager(
                 batasAwal = bAwal,
                 noWaWali = fsIzin.noWaWali,
                 tanggalKembali = parseLocalDate(fsIzin.tanggalKembali),
-                dibuatPada = if (fsIzin.dibuatPada > 0) Instant.ofEpochMilli(fsIzin.dibuatPada) else Instant.now()
+                dibuatPada = if (fsIzin.dibuatPada > 0) Instant.ofEpochMilli(fsIzin.dibuatPada) else Instant.now(),
+                pemberiIzin = fsIzin.pemberiIzin?.trim()?.takeIf { it.isNotEmpty() }
             )
 
             if (local == null) {
@@ -318,6 +319,7 @@ class FirestoreSyncManager(
             noWaWali = izin.noWaWali,
             tanggalKembali = izin.tanggalKembali?.toString(),
             dibuatPada = izin.dibuatPada.toEpochMilli(),
+            pemberiIzin = izin.pemberiIzin,
             konfirmasiList = konfirmasiDtos,
             updatedAt = System.currentTimeMillis()
         )

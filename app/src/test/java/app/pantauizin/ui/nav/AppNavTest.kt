@@ -16,7 +16,7 @@ class AppNavTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun menampilkanEmpatTabDanBerpindahKeTerlambatSaatDiketuk() {
+    fun menampilkanLimaTabDanBerpindahKeRekapDanTerlambatSaatDiketuk() {
         composeTestRule.setContent {
             PantauIzinTheme {
                 AppNav()
@@ -25,8 +25,12 @@ class AppNavTest {
 
         composeTestRule.onNodeWithText("Izin").assertExists().assertIsSelected()
         composeTestRule.onNodeWithText("Terlambat").assertExists()
+        composeTestRule.onNodeWithText("Rekap").assertExists()
         composeTestRule.onNodeWithText("Notifikasi").assertExists()
         composeTestRule.onNodeWithText("Pengaturan").assertExists()
+
+        composeTestRule.onNodeWithText("Rekap").performClick()
+        composeTestRule.onNodeWithText("Rekap").assertIsSelected()
 
         composeTestRule.onNodeWithText("Terlambat").performClick()
         composeTestRule.onNodeWithText("Terlambat").assertIsSelected()

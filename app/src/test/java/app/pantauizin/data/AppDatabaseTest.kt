@@ -152,5 +152,113 @@ class AppDatabaseTest {
         assertEquals(1, list.size)
         assertEquals("ZAKY", list[0].santri.nama)
     }
+
+    @Test
+    fun izinMenyimpanPemberiIzinDanMigrasi1Ke2Berhasil() = runTest {
+        val santriId = db.santriDao().insert(SantriEntity(nama = "BUDI", kamar = "5", aktif = true))
+        val izinId = db.izinDao().insert(
+            IzinEntity(
+                santriId = santriId,
+                tanggalPulang = LocalDate.of(2026, 11, 10),
+                alasanJenis = AlasanJenis.SAKIT,
+                alasanDetail = "Flu",
+                batasJenis = BatasJenis.HARI_2,
+                batasAwal = LocalDate.of(2026, 11, 11),
+                noWaWali = null,
+                tanggalKembali = null,
+                dibuatPada = Instant.ofEpochMilli(1000L),
+                pemberiIzin = "MIFTAHUDIN"
+            )
+        )
+        assertEquals("MIFTAHUDIN", db.izinDao().get(izinId)?.izin?.pemberiIzin)
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val dbFile = context.getDatabasePath("test_migration_1_2.db")
+        dbFile.parentFile?.mkdirs()
+        if (dbFile.exists()) dbFile.delete()
+
+        val v1Db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+        v1Db.version = 1
+        v1Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `santri` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `nama` TEXT NOT NULL COLLATE NOCASE,
+                `kamar` TEXT NOT NULL,
+                `aktif` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        v1Db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_santri_nama` ON `santri` (`nama`)")
+        v1Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `izin` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `santriId` INTEGER NOT NULL,
+                `tanggalPulang` INTEGER NOT NULL,
+                `alasanJenis` TEXT NOT NULL,
+                `alasanDetail` TEXT NOT NULL,
+                `batasJenis` TEXT NOT NULL,
+                `batasAwal` INTEGER NOT NULL,
+                `noWaWali` TEXT,
+                `tanggalKembali` INTEGER,
+                `dibuatPada` INTEGER NOT NULL,
+                FOREIGN KEY(`santriId`) REFERENCES `santri`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        v1Db.execSQL("CREATE INDEX IF NOT EXISTS `index_izin_santriId` ON `izin` (`santriId`)")
+        v1Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `konfirmasi` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `izinId` INTEGER NOT NULL,
+                `tanggalKembaliBaru` INTEGER,
+                `catatan` TEXT,
+                `buktiPath` TEXT,
+                `dibuatPada` INTEGER NOT NULL,
+                FOREIGN KEY(`izinId`) REFERENCES `izin`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        v1Db.execSQL("CREATE INDEX IF NOT EXISTS `index_konfirmasi_izinId` ON `konfirmasi` (`izinId`)")
+        v1Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `notifikasi` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `izinId` INTEGER NOT NULL,
+                `jenis` TEXT NOT NULL,
+                `pesan` TEXT NOT NULL,
+                `tanggalKey` INTEGER NOT NULL,
+                `dibuatPada` INTEGER NOT NULL,
+                `dibaca` INTEGER NOT NULL,
+                FOREIGN KEY(`izinId`) REFERENCES `izin`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        v1Db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_notifikasi_izinId_tanggalKey` ON `notifikasi` (`izinId`, `tanggalKey`)")
+        v1Db.execSQL("INSERT INTO `santri` (`id`, `nama`, `kamar`, `aktif`) VALUES (1, 'AHMAD', '10', 1)")
+        v1Db.execSQL(
+            """
+            INSERT INTO `izin` (`id`, `santriId`, `tanggalPulang`, `alasanJenis`, `alasanDetail`, `batasJenis`, `batasAwal`, `noWaWali`, `tanggalKembali`, `dibuatPada`)
+            VALUES (1, 1, 20000, 'SAKIT', 'Demam', 'HARI_1', 20000, NULL, NULL, 1000)
+            """.trimIndent()
+        )
+        v1Db.close()
+
+        val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.name)
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val migratedIzin = migratedDb.izinDao().get(1L)
+            assertNotNull(migratedIzin)
+            assertEquals("Demam", migratedIzin?.izin?.alasanDetail)
+            assertNull(migratedIzin?.izin?.pemberiIzin)
+        } finally {
+            migratedDb.close()
+            dbFile.delete()
+        }
+    }
 }
 

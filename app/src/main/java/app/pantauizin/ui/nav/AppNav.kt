@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
@@ -38,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import app.pantauizin.AppContainer
@@ -56,6 +58,8 @@ import app.pantauizin.ui.pengaturan.DataSantriScreen
 import app.pantauizin.ui.pengaturan.DataSantriViewModel
 import app.pantauizin.ui.pengaturan.PengaturanScreen
 import app.pantauizin.ui.pengaturan.PengaturanViewModel
+import app.pantauizin.ui.rekap.RekapScreen
+import app.pantauizin.ui.rekap.RekapViewModel
 import app.pantauizin.ui.terlambat.TerlambatScreen
 import app.pantauizin.ui.terlambat.TerlambatViewModel
 import app.pantauizin.ui.terlambat.sortTerlambat
@@ -65,6 +69,7 @@ import java.time.LocalDate
 enum class MainTab(val route: String, val label: String, val icon: ImageVector) {
     IZIN("izin", "Izin", Icons.AutoMirrored.Filled.Assignment),
     TERLAMBAT("terlambat", "Terlambat", Icons.Default.Warning),
+    REKAP("rekap", "Rekap", Icons.AutoMirrored.Filled.FactCheck),
     NOTIFIKASI("notifikasi", "Notifikasi", Icons.Default.Notifications),
     PENGATURAN("pengaturan", "Pengaturan", Icons.Default.Settings)
 }
@@ -95,10 +100,11 @@ fun AppNav(
         }
     }
 
-    if (container != null) {
-        val currentUser by container.authManager.currentUser.collectAsState()
-        val isAuthLoading by container.authManager.isLoading.collectAsState()
+    val currentUser = container?.authManager?.currentUser?.collectAsState()?.value
+    val isAuthLoading = container?.authManager?.isLoading?.collectAsState()?.value ?: false
+    val canManageIzin = currentUser?.canManageIzin ?: true
 
+    if (container != null) {
         if (isAuthLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -139,17 +145,19 @@ fun AppNav(
         )
     }
 
-    if (container != null && (showAddIzin || editIzinId != null)) {
+    if (container != null && canManageIzin && (showAddIzin || editIzinId != null)) {
         BackHandler {
             showAddIzin = false
             editIzinId = null
         }
         val currentEditId = editIzinId
-        val vm = remember(currentEditId) {
+        val grantorNama = currentUser?.displayNama
+        val vm = remember(currentEditId, grantorNama) {
             IzinFormViewModel(
                 santriRepo = container.santriRepository,
                 izinRepo = container.izinRepository,
-                editIzinId = currentEditId
+                editIzinId = currentEditId,
+                pemberiIzinNama = grantorNama
             )
         }
         IzinFormScreen(
@@ -166,7 +174,7 @@ fun AppNav(
         return
     }
 
-    if (container != null && konfirmasiIzinId != null) {
+    if (container != null && canManageIzin && konfirmasiIzinId != null) {
         BackHandler { konfirmasiIzinId = null }
         val targetIzinId = konfirmasiIzinId!!
         val vm = remember(targetIzinId) {
@@ -216,6 +224,7 @@ fun AppNav(
     val topTitle = when (currentTab) {
         MainTab.IZIN -> "Daftar Izin Santri"
         MainTab.TERLAMBAT -> "Pantau Santri Terlambat"
+        MainTab.REKAP -> "Rekap Pulang (2 Bulan)"
         MainTab.NOTIFIKASI -> "Riwayat Notifikasi"
         MainTab.PENGATURAN -> "Pengaturan Aplikasi"
     }
@@ -304,7 +313,14 @@ fun AppNav(
                                 Icon(tab.icon, contentDescription = tab.label)
                             }
                         },
-                        label = { Text(tab.label) }
+                        label = {
+                            Text(
+                                text = tab.label,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     )
                 }
             }
@@ -333,6 +349,7 @@ fun AppNav(
                         onAddIzin = { showAddIzin = true },
                         onEditIzin = { id -> editIzinId = id },
                         onOpenKonfirmasi = { id -> konfirmasiIzinId = id },
+                        canManageIzin = canManageIzin,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -346,6 +363,19 @@ fun AppNav(
                     TerlambatScreen(
                         viewModel = vm,
                         onOpenKonfirmasi = { id -> konfirmasiIzinId = id },
+                        canManageIzin = canManageIzin,
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+                MainTab.REKAP -> {
+                    val vm = remember(container) {
+                        RekapViewModel(
+                            santriRepo = container.santriRepository,
+                            izinRepo = container.izinRepository
+                        )
+                    }
+                    RekapScreen(
+                        viewModel = vm,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
