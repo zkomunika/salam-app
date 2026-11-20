@@ -109,12 +109,15 @@ class AppUpdateManager(
 
     fun suggestNextVersionName(): String {
         val parts = currentVersionName.split(".")
-        return if (parts.size >= 2) {
-            val major = parts[0]
-            val minor = parts[1].toIntOrNull() ?: 0
-            "$major.${minor + 1}"
-        } else {
-            "${currentVersionName}.1"
+        return when {
+            parts.size >= 3 -> {
+                val major = parts[0]
+                val minor = parts[1]
+                val patch = parts[2].toIntOrNull() ?: 0
+                "$major.$minor.${patch + 1}"
+            }
+            parts.size == 2 -> "${parts[0]}.${parts[1]}.1"
+            else -> "${currentVersionName}.0.1"
         }
     }
 

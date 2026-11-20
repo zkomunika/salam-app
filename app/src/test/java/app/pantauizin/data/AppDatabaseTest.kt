@@ -247,7 +247,7 @@ class AppDatabaseTest {
         v1Db.close()
 
         val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.name)
-            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
             .allowMainThreadQueries()
             .build()
         try {
@@ -255,6 +255,124 @@ class AppDatabaseTest {
             assertNotNull(migratedIzin)
             assertEquals("Demam", migratedIzin?.izin?.alasanDetail)
             assertNull(migratedIzin?.izin?.pemberiIzin)
+            assertNull(migratedIzin?.izin?.terakhirWaPada)
+            assertNull(migratedIzin?.izin?.terakhirWaOleh)
+        } finally {
+            migratedDb.close()
+            dbFile.delete()
+        }
+    }
+
+    @Test
+    fun izinMenyimpanStatusWaWaliDanMigrasi2Ke3Berhasil() = runTest {
+        val waTime = Instant.ofEpochMilli(1795172400000L)
+        val santriId = db.santriDao().insert(SantriEntity(nama = "HASAN", kamar = "3", aktif = true))
+        val izinId = db.izinDao().insert(
+            IzinEntity(
+                santriId = santriId,
+                tanggalPulang = LocalDate.of(2026, 11, 10),
+                alasanJenis = AlasanJenis.SAKIT,
+                alasanDetail = "Demam",
+                batasJenis = BatasJenis.HARI_2,
+                batasAwal = LocalDate.of(2026, 11, 11),
+                noWaWali = "628123456789",
+                tanggalKembali = null,
+                dibuatPada = Instant.ofEpochMilli(1000L),
+                pemberiIzin = "MIFTAHUDIN",
+                terakhirWaPada = waTime,
+                terakhirWaOleh = "M FIKRI HAMBALI"
+            )
+        )
+        val saved = db.izinDao().get(izinId)?.izin
+        assertEquals(waTime, saved?.terakhirWaPada)
+        assertEquals("M FIKRI HAMBALI", saved?.terakhirWaOleh)
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val dbFile = context.getDatabasePath("test_migration_2_3.db")
+        dbFile.parentFile?.mkdirs()
+        if (dbFile.exists()) dbFile.delete()
+
+        val v2Db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+        v2Db.version = 2
+        v2Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `santri` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `nama` TEXT NOT NULL COLLATE NOCASE,
+                `kamar` TEXT NOT NULL,
+                `aktif` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        v2Db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_santri_nama` ON `santri` (`nama`)")
+        v2Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `izin` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `santriId` INTEGER NOT NULL,
+                `tanggalPulang` INTEGER NOT NULL,
+                `alasanJenis` TEXT NOT NULL,
+                `alasanDetail` TEXT NOT NULL,
+                `batasJenis` TEXT NOT NULL,
+                `batasAwal` INTEGER NOT NULL,
+                `noWaWali` TEXT,
+                `tanggalKembali` INTEGER,
+                `dibuatPada` INTEGER NOT NULL,
+                `pemberiIzin` TEXT,
+                FOREIGN KEY(`santriId`) REFERENCES `santri`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        v2Db.execSQL("CREATE INDEX IF NOT EXISTS `index_izin_santriId` ON `izin` (`santriId`)")
+        v2Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `konfirmasi` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `izinId` INTEGER NOT NULL,
+                `tanggalKembaliBaru` INTEGER,
+                `catatan` TEXT,
+                `buktiPath` TEXT,
+                `dibuatPada` INTEGER NOT NULL,
+                FOREIGN KEY(`izinId`) REFERENCES `izin`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        v2Db.execSQL("CREATE INDEX IF NOT EXISTS `index_konfirmasi_izinId` ON `konfirmasi` (`izinId`)")
+        v2Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `notifikasi` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `izinId` INTEGER NOT NULL,
+                `jenis` TEXT NOT NULL,
+                `pesan` TEXT NOT NULL,
+                `tanggalKey` INTEGER NOT NULL,
+                `dibuatPada` INTEGER NOT NULL,
+                `dibaca` INTEGER NOT NULL,
+                FOREIGN KEY(`izinId`) REFERENCES `izin`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        v2Db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_notifikasi_izinId_tanggalKey` ON `notifikasi` (`izinId`, `tanggalKey`)")
+        v2Db.execSQL("INSERT INTO `santri` (`id`, `nama`, `kamar`, `aktif`) VALUES (1, 'UMAR', '7', 1)")
+        v2Db.execSQL(
+            """
+            INSERT INTO `izin` (`id`, `santriId`, `tanggalPulang`, `alasanJenis`, `alasanDetail`, `batasJenis`, `batasAwal`, `noWaWali`, `tanggalKembali`, `dibuatPada`, `pemberiIzin`)
+            VALUES (1, 1, 20000, 'SAKIT', 'Flu berat', 'HARI_2', 20001, '6281234', NULL, 1000, 'MIFTAHUDIN')
+            """.trimIndent()
+        )
+        v2Db.close()
+
+        val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.name)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val migratedIzin = migratedDb.izinDao().get(1L)
+            assertNotNull(migratedIzin)
+            assertEquals("Flu berat", migratedIzin?.izin?.alasanDetail)
+            assertEquals("MIFTAHUDIN", migratedIzin?.izin?.pemberiIzin)
+            assertNull(migratedIzin?.izin?.terakhirWaPada)
+            assertNull(migratedIzin?.izin?.terakhirWaOleh)
         } finally {
             migratedDb.close()
             dbFile.delete()

@@ -140,6 +140,23 @@ class IzinRepository(
         } catch (_: Exception) {}
     }
 
+    suspend fun catatHubungiWa(
+        izinId: Long,
+        oleh: String?,
+        waktu: Instant = Instant.now()
+    ) {
+        val current = izinDao.get(izinId)?.izin ?: return
+        izinDao.update(
+            current.copy(
+                terakhirWaPada = waktu,
+                terakhirWaOleh = oleh?.trim()?.takeIf { it.isNotEmpty() }
+            )
+        )
+        try {
+            izinDao.get(izinId)?.let { syncManager?.uploadIzin(it) }
+        } catch (_: Exception) {}
+    }
+
     suspend fun tambahKonfirmasi(
         izinId: Long,
         tanggalBaru: LocalDate?,

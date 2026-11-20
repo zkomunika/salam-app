@@ -189,5 +189,17 @@ class IzinRepositoryTest {
         val secondRun = repo.recalculateBatasInklusif()
         assertEquals(0, secondRun)
     }
+
+    @Test
+    fun catatHubungiWaMenyimpanWaktuDanNamaPengurus() = runTest {
+        val r = repo.tambah(input()) as SaveIzinResult.Ok
+        val waktu = java.time.Instant.ofEpochMilli(1795172500000L)
+
+        repo.catatHubungiWa(r.id, "M FIKRI HAMBALI", waktu)
+
+        val view = repo.get(r.id)!!
+        assertEquals(waktu, view.terakhirWaPada)
+        assertEquals("M FIKRI HAMBALI", view.terakhirWaOleh)
+    }
 }
 

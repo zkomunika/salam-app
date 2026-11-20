@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -80,19 +81,30 @@ fun KonfirmasiRiwayatSection(
                         shape = RoundedCornerShape(12.dp)
                     )
                     .border(
-                        width = 1.dp,
+                        width = 1.25.dp,
                         color = MaterialTheme.colorScheme.outlineVariant,
                         shape = RoundedCornerShape(12.dp)
                     )
                     .padding(12.dp)
             ) {
-                Text(
-                    text = "Konfirmasi ${idx + 1}  •  dicatat ${
-                        konf.dibuatPada.atZone(ZoneId.systemDefault()).format(ID_DATETIME_FORMAT)
-                    }",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Konfirmasi ${idx + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = konf.dibuatPada.atZone(ZoneId.systemDefault()).format(ID_DATETIME_FORMAT),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Kembali paling lambat: " +
                         (konf.tanggalKembaliBaru?.format(ID_DATE_FORMAT) ?: "tanpa tanggal baru"),

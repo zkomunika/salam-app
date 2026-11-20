@@ -3,29 +3,27 @@ package app.pantauizin.ui.nav
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,9 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.sp
 import app.pantauizin.AppContainer
 import app.pantauizin.data.firebase.AppUpdateInfo
 import app.pantauizin.notify.NotificationHelper
@@ -64,6 +63,7 @@ import app.pantauizin.ui.terlambat.TerlambatScreen
 import app.pantauizin.ui.terlambat.TerlambatViewModel
 import app.pantauizin.ui.terlambat.sortTerlambat
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 enum class MainTab(val route: String, val label: String, val icon: ImageVector) {
@@ -74,11 +74,12 @@ enum class MainTab(val route: String, val label: String, val icon: ImageVector) 
     PENGATURAN("pengaturan", "Pengaturan", Icons.Default.Settings)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNav(
     container: AppContainer? = null,
-    initialTab: String? = null
+    initialTab: String? = null,
+    isDarkTheme: Boolean = false,
+    onToggleDarkTheme: () -> Unit = {}
 ) {
     val startTab = if (initialTab == NotificationHelper.TAB_TERLAMBAT) MainTab.TERLAMBAT else MainTab.IZIN
     var currentTab by rememberSaveable(initialTab) { mutableStateOf(startTab) }
@@ -89,12 +90,14 @@ fun AppNav(
     var showDataSantri by rememberSaveable { mutableStateOf(false) }
 
     var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         if (container != null) {
             container.updateManager.checkForUpdate().onSuccess { info ->
                 if (info != null) {
                     availableUpdate = info
+                    showUpdateDialog = true
                 }
             }
         }
@@ -110,7 +113,7 @@ fun AppNav(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                androidx.compose.material3.CircularProgressIndicator()
+                CircularProgressIndicator()
             }
             return
         }
@@ -122,26 +125,31 @@ fun AppNav(
             app.pantauizin.ui.auth.LoginScreen(
                 viewModel = loginVm,
                 updateInfo = availableUpdate,
-                onUpdateClick = { /* dialog rendered below if availableUpdate != null */ },
+                onUpdateClick = { showUpdateDialog = true },
+                isDarkTheme = isDarkTheme,
+                onToggleDarkTheme = onToggleDarkTheme,
                 onLoginSuccess = { }
             )
 
-            if (availableUpdate != null) {
+            if (availableUpdate != null && showUpdateDialog) {
                 UpdateDialog(
                     updateInfo = availableUpdate!!,
                     updateManager = container.updateManager,
-                    onDismiss = { availableUpdate = null }
+                    onDismiss = { showUpdateDialog = false }
                 )
             }
             return
         }
     }
 
-    if (container != null && availableUpdate != null) {
+    if (container != null && availableUpdate != null && showUpdateDialog) {
         UpdateDialog(
             updateInfo = availableUpdate!!,
             updateManager = container.updateManager,
-            onDismiss = { availableUpdate = null }
+            onDismiss = {
+                availableUpdate = null
+                showUpdateDialog = false
+            }
         )
     }
 
@@ -221,107 +229,91 @@ fun AppNav(
         remember { mutableStateOf(0) }
     }
 
-    val topTitle = when (currentTab) {
-        MainTab.IZIN -> "Daftar Izin Santri"
-        MainTab.TERLAMBAT -> "Pantau Santri Terlambat"
-        MainTab.REKAP -> "Rekap Pulang (2 Bulan)"
-        MainTab.NOTIFIKASI -> "Riwayat Notifikasi"
-        MainTab.PENGATURAN -> "Pengaturan Aplikasi"
-    }
-
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isSyncing by remember { mutableStateOf(false) }
 
+    val triggerSync: () -> Unit = {
+        if (container != null && !isSyncing) {
+            isSyncing = true
+            scope.launch {
+                val res = container.syncManager.syncNow()
+                isSyncing = false
+                res.fold(
+                    onSuccess = {
+                        Toast.makeText(
+                            context,
+                            "Data berhasil disinkronkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    onFailure = { err ->
+                        Toast.makeText(
+                            context,
+                            "Gagal sinkron: ${err.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                )
+            }
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text(topTitle) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                actions = {
-                    if (container != null) {
-                        IconButton(
-                            onClick = {
-                                if (!isSyncing) {
-                                    isSyncing = true
-                                    scope.launch {
-                                        val res = container.syncManager.syncNow()
-                                        isSyncing = false
-                                        res.fold(
-                                            onSuccess = {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Data berhasil disinkronkan",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            },
-                                            onFailure = { err ->
-                                                Toast.makeText(
-                                                    context,
-                                                    "Gagal sinkron: ${err.message}",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        ) {
-                            if (isSyncing) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Sync,
-                                    contentDescription = "Sinkronkan data"
-                                )
-                            }
-                        }
-                    }
-                }
-            )
-        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                MainTab.entries.forEach { tab ->
-                    val badgeCount = when (tab) {
-                        MainTab.TERLAMBAT -> terlambatCount
-                        MainTab.NOTIFIKASI -> unreadNotifCount
-                        else -> 0
-                    }
-                    NavigationBarItem(
-                        selected = currentTab == tab,
-                        onClick = { currentTab = tab },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (badgeCount > 0) {
-                                        Badge {
-                                            Text(if (badgeCount > 99) "99+" else badgeCount.toString())
+            Column {
+                HorizontalDivider(
+                    thickness = 1.25.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    MainTab.entries.forEach { tab ->
+                        val selected = currentTab == tab
+                        val badgeCount = when (tab) {
+                            MainTab.TERLAMBAT -> terlambatCount
+                            MainTab.NOTIFIKASI -> unreadNotifCount
+                            else -> 0
+                        }
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { currentTab = tab },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            icon = {
+                                BadgedBox(
+                                    badge = {
+                                        if (badgeCount > 0) {
+                                            Badge {
+                                                Text(if (badgeCount > 99) "99+" else badgeCount.toString())
+                                            }
                                         }
                                     }
+                                ) {
+                                    Icon(tab.icon, contentDescription = tab.label)
                                 }
-                            ) {
-                                Icon(tab.icon, contentDescription = tab.label)
+                            },
+                            label = {
+                                Text(
+                                    text = tab.label,
+                                    fontSize = 10.sp,
+                                    letterSpacing = (-0.2).sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Clip
+                                )
                             }
-                        },
-                        label = {
-                            Text(
-                                text = tab.label,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -350,6 +342,10 @@ fun AppNav(
                         onEditIzin = { id -> editIzinId = id },
                         onOpenKonfirmasi = { id -> konfirmasiIzinId = id },
                         canManageIzin = canManageIzin,
+                        userName = currentUser?.displayNama ?: "Pengurus",
+                        isSyncing = isSyncing,
+                        onSyncClick = triggerSync,
+                        onOpenProfil = { currentTab = MainTab.PENGATURAN },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -364,6 +360,7 @@ fun AppNav(
                         viewModel = vm,
                         onOpenKonfirmasi = { id -> konfirmasiIzinId = id },
                         canManageIzin = canManageIzin,
+                        currentUserName = currentUser?.displayNama,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -398,12 +395,16 @@ fun AppNav(
                             updateManager = container.updateManager,
                             onTesNotifikasi = { container.sweepRunner.tesNotifikasi() },
                             onTesAlarm = { container.sweepRunner.scheduleTestAlarm() },
+                            santriRepo = container.santriRepository,
+                            izinRepo = container.izinRepository,
                             onReschedule = { container.sweepRunner.rescheduleOnly() }
                         )
                     }
                     PengaturanScreen(
                         viewModel = vm,
                         onOpenDataSantri = { showDataSantri = true },
+                        isDarkTheme = isDarkTheme,
+                        onToggleDarkTheme = onToggleDarkTheme,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

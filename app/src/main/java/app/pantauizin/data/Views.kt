@@ -29,7 +29,9 @@ data class IzinView(
     val noWaWali: String?,
     val tanggalKembali: LocalDate?,
     val konfirmasi: List<KonfirmasiView>,
-    val pemberiIzin: String? = null
+    val pemberiIzin: String? = null,
+    val terakhirWaPada: Instant? = null,
+    val terakhirWaOleh: String? = null
 ) {
     fun toSnapshot(): IzinSnapshot = IzinSnapshot(
         izinId = id,
@@ -74,7 +76,9 @@ internal fun IzinWithKonfirmasi.toView(): IzinView = IzinView(
                 dibuatPada = k.dibuatPada
             )
         },
-    pemberiIzin = izin.pemberiIzin
+    pemberiIzin = izin.pemberiIzin,
+    terakhirWaPada = izin.terakhirWaPada,
+    terakhirWaOleh = izin.terakhirWaOleh
 )
 
 internal fun NotifikasiWithSantri.toView(): NotifikasiView = NotifikasiView(

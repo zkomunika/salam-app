@@ -2,6 +2,8 @@ package app.pantauizin.ui.pengaturan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.pantauizin.data.IzinRepository
+import app.pantauizin.data.SantriRepository
 import app.pantauizin.data.SettingsStore
 import app.pantauizin.data.firebase.AppUpdateInfo
 import app.pantauizin.data.firebase.AppUpdateManager
@@ -9,6 +11,8 @@ import app.pantauizin.data.firebase.FirebaseAuthManager
 import app.pantauizin.data.firebase.FirestoreSyncManager
 import app.pantauizin.data.firebase.UserProfile
 import app.pantauizin.domain.DefaultTemplates
+import app.pantauizin.domain.IzinStatus
+import app.pantauizin.domain.StatusResolver
 import app.pantauizin.domain.TemplateVariant
 import app.pantauizin.notify.SweepSource
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -40,7 +45,11 @@ data class PengaturanUiState(
     val isCheckingUpdate: Boolean = false,
     val updateCheckMessage: String? = null,
     val foundUpdate: AppUpdateInfo? = null,
-    val isPublishingUpdate: Boolean = false
+    val isPublishingUpdate: Boolean = false,
+    val totalSantriAktif: Int = 0,
+    val persenTepatWaktu: Int? = null,
+    val izinAktifCount: Int = 0,
+    val terlambatCount: Int = 0
 )
 
 class PengaturanViewModel(
@@ -50,6 +59,8 @@ class PengaturanViewModel(
     val updateManager: AppUpdateManager? = null,
     private val onTesNotifikasi: () -> Unit = {},
     private val onTesAlarm: () -> LocalDateTime? = { null },
+    private val santriRepo: SantriRepository? = null,
+    private val izinRepo: IzinRepository? = null,
     private val onReschedule: suspend () -> Unit
 ) : ViewModel() {
 
@@ -61,6 +72,47 @@ class PengaturanViewModel(
             viewModelScope.launch {
                 auth.currentUser.collect { user ->
                     _uiState.update { it.copy(currentUser = user) }
+                }
+            }
+        }
+        santriRepo?.let { repo ->
+            viewModelScope.launch {
+                repo.observe().collect { list ->
+                    _uiState.update { it.copy(totalSantriAktif = list.count { s -> s.aktif }) }
+                }
+            }
+        }
+        izinRepo?.let { repo ->
+            viewModelScope.launch {
+                repo.observe().collect { list ->
+                    val today = LocalDate.now()
+                    var active = 0
+                    var overdue = 0
+                    var tepat = 0
+                    var kembaliTerlambat = 0
+                    for (view in list) {
+                        val st = StatusResolver.status(view.toSnapshot(), today)
+                        when (st) {
+                            IzinStatus.IZIN_BERJALAN -> active++
+                            IzinStatus.TERLAMBAT_BELUM_KONFIRMASI,
+                            IzinStatus.TERLAMBAT_TERKONFIRMASI,
+                            IzinStatus.TERLAMBAT_KONFIRMASI_HABIS -> {
+                                active++
+                                overdue++
+                            }
+                            IzinStatus.KEMBALI_TEPAT -> tepat++
+                            IzinStatus.KEMBALI_TERLAMBAT -> kembaliTerlambat++
+                        }
+                    }
+                    val totalSelesai = tepat + kembaliTerlambat
+                    val pct = if (totalSelesai > 0) (tepat * 100) / totalSelesai else null
+                    _uiState.update {
+                        it.copy(
+                            izinAktifCount = active,
+                            terlambatCount = overdue,
+                            persenTepatWaktu = pct
+                        )
+                    }
                 }
             }
         }
@@ -278,4 +330,3 @@ class PengaturanViewModel(
         settings.resetTemplate(v)
     }
 }
-

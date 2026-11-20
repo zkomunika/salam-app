@@ -18,6 +18,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
+
+enum class TerlambatFilter {
+    SEMUA,
+    BELUM_KONFIRMASI,
+    PERPANJANGAN
+}
 
 fun sortTerlambat(items: List<IzinView>, today: LocalDate): List<IzinView> {
     return items
@@ -58,8 +65,17 @@ class TerlambatViewModel(
     private val todayProvider: () -> LocalDate = { LocalDate.now() }
 ) : ViewModel() {
 
+    private val _filter = MutableStateFlow(TerlambatFilter.SEMUA)
+    val filter: StateFlow<TerlambatFilter> = _filter.asStateFlow()
+
+    private val _allItems = MutableStateFlow<List<TerlambatItemUi>>(emptyList())
+    val allItems: StateFlow<List<TerlambatItemUi>> = _allItems.asStateFlow()
+
     private val _items = MutableStateFlow<List<TerlambatItemUi>>(emptyList())
     val items: StateFlow<List<TerlambatItemUi>> = _items.asStateFlow()
+
+    private val _jamPengingat = MutableStateFlow(SettingsStore.DEFAULT_JAM)
+    val jamPengingat: StateFlow<LocalTime> = _jamPengingat.asStateFlow()
 
     private var templateA: String = DefaultTemplates.A
     private var templateB: String = DefaultTemplates.B
@@ -69,12 +85,15 @@ class TerlambatViewModel(
             combine(
                 izinRepo.observe(),
                 settingsStore.templateA,
-                settingsStore.templateB
-            ) { list, tplA, tplB ->
+                settingsStore.templateB,
+                settingsStore.jamPengingat,
+                _filter
+            ) { list, tplA, tplB, jam, activeFilter ->
                 templateA = tplA
                 templateB = tplB
+                _jamPengingat.value = jam
                 val today = todayProvider()
-                sortTerlambat(list, today).map { view ->
+                val mappedAll = sortTerlambat(list, today).map { view ->
                     val snap = view.toSnapshot()
                     TerlambatItemUi(
                         view = view,
@@ -83,10 +102,26 @@ class TerlambatViewModel(
                         hariTerlambat = StatusResolver.hariTerlambat(snap, today)
                     )
                 }
-            }.collect { sorted ->
-                _items.value = sorted
+                val filtered = when (activeFilter) {
+                    TerlambatFilter.SEMUA -> mappedAll
+                    TerlambatFilter.BELUM_KONFIRMASI -> mappedAll.filter {
+                        it.status == IzinStatus.TERLAMBAT_BELUM_KONFIRMASI ||
+                            it.status == IzinStatus.TERLAMBAT_KONFIRMASI_HABIS
+                    }
+                    TerlambatFilter.PERPANJANGAN -> mappedAll.filter {
+                        it.status == IzinStatus.TERLAMBAT_TERKONFIRMASI
+                    }
+                }
+                mappedAll to filtered
+            }.collect { (all, filtered) ->
+                _allItems.value = all
+                _items.value = filtered
             }
         }
+    }
+
+    fun pilihFilter(newFilter: TerlambatFilter) {
+        _filter.value = newFilter
     }
 
     fun buildSendAction(item: TerlambatItemUi): SendAction {
@@ -108,5 +143,8 @@ class TerlambatViewModel(
     suspend fun tandaiKembali(izinId: Long, tanggal: LocalDate) {
         izinRepo.tandaiKembali(izinId, tanggal)
     }
-}
 
+    suspend fun catatHubungiWa(izinId: Long, oleh: String?) {
+        izinRepo.catatHubungiWa(izinId, oleh)
+    }
+}

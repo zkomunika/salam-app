@@ -47,7 +47,9 @@ data class IzinEntity(
     val noWaWali: String?,
     val tanggalKembali: LocalDate?,
     val dibuatPada: Instant,
-    val pemberiIzin: String? = null
+    val pemberiIzin: String? = null,
+    val terakhirWaPada: Instant? = null,
+    val terakhirWaOleh: String? = null
 )
 
 @Entity(

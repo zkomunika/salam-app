@@ -70,6 +70,8 @@ data class FirestoreIzin(
     val tanggalKembali: String? = null,
     val dibuatPada: Long = 0,
     val pemberiIzin: String? = null,
+    val terakhirWaPada: Long? = null,
+    val terakhirWaOleh: String? = null,
     val konfirmasiList: List<FirestoreKonfirmasi> = emptyList(),
     val updatedAt: Long = System.currentTimeMillis()
 )

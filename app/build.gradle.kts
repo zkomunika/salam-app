@@ -14,8 +14,8 @@ android {
         applicationId = "app.pantauizin"
         minSdk = 28
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.6"
+        versionCode = 7
+        versionName = "1.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

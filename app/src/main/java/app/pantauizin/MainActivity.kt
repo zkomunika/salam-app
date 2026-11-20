@@ -10,6 +10,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -39,10 +41,18 @@ class MainActivity : ComponentActivity() {
 
         val appContainer = (application as? PantauIzinApp)?.container
         setContent {
-            PantauIzinTheme {
+            val darkOverride = appContainer?.settingsStore?.darkModeOverride?.collectAsState(initial = null)?.value
+            val isDark = darkOverride ?: isSystemInDarkTheme()
+            PantauIzinTheme(darkTheme = isDark) {
                 AppNav(
                     container = appContainer,
-                    initialTab = openTab
+                    initialTab = openTab,
+                    isDarkTheme = isDark,
+                    onToggleDarkTheme = {
+                        lifecycleScope.launch {
+                            appContainer?.settingsStore?.setDarkMode(!isDark)
+                        }
+                    }
                 )
             }
         }

@@ -114,6 +114,16 @@ class SettingsStore(context: Context) {
         }
     }
 
+    val darkModeOverride: Flow<Boolean?> = dataStore.data.map { prefs ->
+        prefs[KEY_DARK_MODE]
+    }
+
+    suspend fun setDarkMode(dark: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_DARK_MODE] = dark
+        }
+    }
+
     companion object {
         val DEFAULT_JAM: LocalTime = LocalTime.of(8, 0)
         private val KEY_JAM_PENGINGAT = stringPreferencesKey("jam_pengingat")
@@ -125,6 +135,7 @@ class SettingsStore(context: Context) {
         private val KEY_LAST_ALARM_FIRED = stringPreferencesKey("last_alarm_fired")
         private val KEY_NEXT_ALARM = stringPreferencesKey("next_alarm")
         private val KEY_BATAS_INKLUSIF_RECALCULATED = booleanPreferencesKey("batas_inklusif_recalculated_v1")
+        private val KEY_DARK_MODE = booleanPreferencesKey("dark_mode_override")
 
         private val stores = ConcurrentHashMap<String, DataStore<Preferences>>()
 

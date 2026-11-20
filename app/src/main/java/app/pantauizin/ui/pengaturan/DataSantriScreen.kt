@@ -18,14 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,7 +32,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.pantauizin.domain.SantriItem
 import app.pantauizin.ui.components.EmptyStateBox
+import app.pantauizin.ui.components.KamarFilterSelector
+import app.pantauizin.ui.components.PillFilterButton
+import app.pantauizin.ui.components.SoftSearchBar
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -74,7 +75,6 @@ fun DataSantriScreen(
     var editingSantri by remember { mutableStateOf<SantriItem?>(null) }
     var formNama by remember { mutableStateOf("") }
     var formKamar by remember { mutableStateOf("") }
-    var kamarExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -101,6 +101,7 @@ fun DataSantriScreen(
                     viewModel.hapusPesanError()
                     showFormDialog = true
                 },
+                shape = CircleShape,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -114,69 +115,27 @@ fun DataSantriScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            OutlinedTextField(
+            SoftSearchBar(
                 value = state.query,
                 onValueChange = { viewModel.ubahQuery(it) },
-                label = { Text("Cari nama santri") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (state.query.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.ubahQuery("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Hapus pencarian")
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                placeholder = "Cari nama santri..."
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            ExposedDropdownMenuBox(
-                expanded = kamarExpanded,
-                onExpandedChange = { kamarExpanded = !kamarExpanded }
-            ) {
-                OutlinedTextField(
-                    value = state.kamarFilter?.let { "Kamar $it" } ?: "Semua kamar",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Filter kamar") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kamarExpanded) },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = kamarExpanded,
-                    onDismissRequest = { kamarExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Semua kamar") },
-                        onClick = {
-                            viewModel.pilihKamarFilter(null)
-                            kamarExpanded = false
-                        }
-                    )
-                    state.kamarOptions.forEach { kamar ->
-                        DropdownMenuItem(
-                            text = { Text("Kamar $kamar") },
-                            onClick = {
-                                viewModel.pilihKamarFilter(kamar)
-                                kamarExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            KamarFilterSelector(
+                selectedKamar = state.kamarFilter,
+                kamarOptions = state.kamarOptions,
+                onSelectKamar = { viewModel.pilihKamarFilter(it) }
+            )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             val totalSemua = state.totalAktif + state.totalNonaktif
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val filters = listOf(
                     SantriStatusFilter.SEMUA to "Semua ($totalSemua)",
@@ -184,10 +143,10 @@ fun DataSantriScreen(
                     SantriStatusFilter.NONAKTIF to "Nonaktif (${state.totalNonaktif})"
                 )
                 for ((f, label) in filters) {
-                    FilterChip(
+                    PillFilterButton(
+                        label = label,
                         selected = state.statusFilter == f,
-                        onClick = { viewModel.pilihStatusFilter(f) },
-                        label = { Text(label) }
+                        onClick = { viewModel.pilihStatusFilter(f) }
                     )
                 }
             }
@@ -226,10 +185,10 @@ fun DataSantriScreen(
                     items(state.items, key = { it.id }) { santri ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            border = BorderStroke(1.25.dp, MaterialTheme.colorScheme.outlineVariant),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Row(
                                 modifier = Modifier
